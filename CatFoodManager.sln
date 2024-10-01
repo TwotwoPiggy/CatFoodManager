@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35303.130
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CatFoodManager", "CatFoodManager\CatFoodManager.csproj", "{1D7BA88D-F19E-4D33-B484-591E2C2A70C9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CatFoodManager.Core", "CatFoodManager.Core\CatFoodManager.Core.csproj", "{97DF449D-F104-4973-B151-3FA964CD9D3D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1D7BA88D-F19E-4D33-B484-591E2C2A70C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D7BA88D-F19E-4D33-B484-591E2C2A70C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D7BA88D-F19E-4D33-B484-591E2C2A70C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D7BA88D-F19E-4D33-B484-591E2C2A70C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{97DF449D-F104-4973-B151-3FA964CD9D3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97DF449D-F104-4973-B151-3FA964CD9D3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97DF449D-F104-4973-B151-3FA964CD9D3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97DF449D-F104-4973-B151-3FA964CD9D3D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {70BE65A5-31AD-4937-9562-D615EF73FE9A}
+	EndGlobalSection
+EndGlobal
