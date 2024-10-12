@@ -5,9 +5,10 @@ using System.Linq.Expressions;
 
 namespace CatFoodManager.Core.Repositories
 {
-	public class CommonRepository(SQLiteHelper sqliteHelper) : RepositoryBase(sqliteHelper), IRepository
+	public class CommonRepository : RepositoryBase, IRepository
 	{
-		public void Add<T>(T entity) => _sqliteHelper.Db.Insert(entity);
+        public CommonRepository(SQLiteHelper sqliteHelper):base(sqliteHelper) { }
+        public void Add<T>(T entity) => _sqliteHelper.Db.Insert(entity);
 
 		public void Update<T>(T entity) where T : new() => _sqliteHelper.Db.Update(entity);
 

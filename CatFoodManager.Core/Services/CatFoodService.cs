@@ -4,8 +4,9 @@ using CatFoodManager.Core.Statics;
 
 namespace CatFoodManager.Core.Services
 {
-	public class CatFoodService(IRepository repo, bool needMigrate) : GenericServiceBase<CatFood>(repo, needMigrate), IService<CatFood>
+	public class CatFoodService : GenericServiceBase<CatFood>, IService<CatFood>
 	{
+        public CatFoodService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
 		public void Save(CatFood catFood)
 		{
 			_repo.Add(catFood);

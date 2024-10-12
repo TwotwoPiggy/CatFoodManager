@@ -14,12 +14,18 @@ using static SQLite.SQLite3;
 
 namespace CatFoodManager.Core.Services
 {
-	public class PictureContentService(IRepository repo, OCRHelper ocrHelper, IPlatformRegExpService regExpService) : ServiceBase(repo)
+	public class PictureContentService : ServiceBase
 	{
-		private readonly OCRHelper _ocrHelper = ocrHelper;
-		private readonly IPlatformRegExpService _regExpService = regExpService;
+		private readonly OCRHelper _ocrHelper;
+		private readonly IPlatformRegExpService _regExpService;
 
-		private string _originPicturePath = string.Empty;
+        public PictureContentService(IRepository repo, OCRHelper ocrHelper, IPlatformRegExpService regExpService):base(repo)
+        {
+			_ocrHelper = ocrHelper;
+			_regExpService = regExpService;
+		}
+
+        private string _originPicturePath = string.Empty;
 		private string? _newPicturePath = string.Empty;
 
 

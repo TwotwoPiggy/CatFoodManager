@@ -10,7 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lemon.UI.Controls" Version="1.0.2" />
+    <PackageReference Include="AntdUI" Version="1.6.6" />
+    <PackageReference Include="Lemon.UI.Controls" Version="1.0.5" />
     <PackageReference Include="ReaLTaiizor" Version="3.8.0.7" />
   </ItemGroup>
 

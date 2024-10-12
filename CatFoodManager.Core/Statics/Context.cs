@@ -33,7 +33,10 @@ namespace CatFoodManager.Core.Statics
 
 		public static void FillConnectionString(string connectionString)
 		{
-			ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);
+			if (string.IsNullOrWhiteSpace(connectionString))
+			{
+				throw new ArgumentNullException(nameof(connectionString));
+			}
 			_connectionString = connectionString;
 		}
 		#endregion

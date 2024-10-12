@@ -4,9 +4,11 @@ using CatFoodManager.Core.Statics;
 
 namespace CatFoodManager.Core.Services
 {
-	public class PlatformRegExpService(IRepository repo, bool needMigrate) : GenericServiceBase<PlatformRegExp>(repo, needMigrate), IPlatformRegExpService
+	public class PlatformRegExpService : GenericServiceBase<PlatformRegExp>, IPlatformRegExpService
 	{
-		public void Save(PlatformRegExp platformRegExp)
+        public PlatformRegExpService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
+
+        public void Save(PlatformRegExp platformRegExp)
 		{
 			_repo.Add(platformRegExp);
 		}

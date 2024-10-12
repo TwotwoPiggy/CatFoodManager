@@ -10,8 +10,9 @@ using System.Windows.Forms.Design;
 
 namespace CatFoodManager.Core.Services
 {
-	public class BrandService(IRepository repo, bool needMigrate) : GenericServiceBase<Brand>(repo, needMigrate), IService<Brand>
+	public class BrandService : GenericServiceBase<Brand>, IService<Brand>
 	{
+		public BrandService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
 		public void Save(Brand brand)
 		{
 			_repo.Add(brand);
