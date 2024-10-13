@@ -3,9 +3,6 @@ using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Services;
 using CatFoodManager.Core.Statics;
 using CommonTools;
-using System.Data;
-using System.Drawing.Printing;
-using System.IO;
 
 namespace CatFoodManager
 {
@@ -64,8 +61,9 @@ namespace CatFoodManager
 			_pictureContentService = pictureContentService;
 			_pictureFolders = [];
 			InitializeContext();
-			InitComponents();
-			SetLabels();
+			//InitComponents();
+			//SetLabels();
+			//ControlButtons();
 		}
 
 		#region public methods
@@ -75,9 +73,9 @@ namespace CatFoodManager
 		#region events
 		private void Main_Load(object sender, EventArgs e)
 		{
+			LoadConfigs();
 			InitComponents();
 			LoadData();
-			
 		}
 
 		//todo: progress bar
@@ -110,7 +108,7 @@ namespace CatFoodManager
 					foreach (var path in paths)
 					{
 						content = _pictureContentService.GetContentFromPicture(path, needReduceNoise: true);
-						(catFood, shopName) = _pictureContentService.GenerateCatFood(content, regPattern.RegularExpression, regPattern.FieldInfos, path);
+						(catFood, shopName) = _pictureContentService.GenerateCatFood(content, regPattern.RegularExpression, regPattern.FieldInfoList, path);
 						brand = _brandService.Query(shopName);
 						catFood.Brand = brand;
 						catFoods.Add(catFood);
@@ -138,8 +136,68 @@ namespace CatFoodManager
 
 		private void homeBtn_Click(object sender, EventArgs e)
 		{
+			if (!homeBtn.Enabled)
+			{
+				return;
+			}
 			_currentPage = 1;
 			LoadData();
+		}
+
+		private void prePageBtn_Click(object sender, EventArgs e)
+		{
+			if (!prePageBtn.Enabled)
+			{
+				return;
+			}
+			_currentPage--;
+			LoadData();
+		}
+
+		private void nextPageBtn_Click(object sender, EventArgs e)
+		{
+			if (!nextPageBtn.Enabled)
+			{
+				return;
+			}
+			_currentPage++;
+			LoadData();
+		}
+
+		private void lastPageBtn_Click(object sender, EventArgs e)
+		{
+			if (!lastPageBtn.Enabled)
+			{
+				return;
+			}
+			_currentPage = _pageCount;
+			LoadData();
+		}
+
+		private void jumpBtn_Click(object sender, EventArgs e)
+		{
+			#region validation
+			if (!Int32.TryParse(jumpPageText.Text, out int gotoPage))
+			{
+				MessageBox.Show("待跳转的页数不合规, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			if (gotoPage <= 0)
+			{
+				MessageBox.Show("待跳转的页数超出当前支持的最小页数, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			if (gotoPage > _pageCount)
+			{
+				MessageBox.Show("待跳转的页数超出当前支持的最大页数, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			#endregion
+			_currentPage = gotoPage;
+			LoadData();
+		}
+
+
+		private void savePicConfigBtn_Click(object sender, EventArgs e)
+		{
+			ConfigManager.SetAppConfig(ConfigNames.PictureFolders,picConfigText.Text);
 		}
 		#endregion
 
@@ -166,12 +224,18 @@ namespace CatFoodManager
 		private void LoadData()
 		{
 			(var catFoodResults, _totalCount) = _catFoodSerivce.GetAllWithCount();
-			_bindingSource.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize); ;
+			_bindingSource.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
 			dataView.DataSource = _bindingSource;
 			_pageCount = Convert.ToInt32(Math.Ceiling((double)_totalCount / _pageSize));
+			SetHeaders();
 			SetLabels();
 			ControlButtons();
 			Refresh();
+		}
+
+		private void LoadConfigs()
+		{
+			picConfigText.Text = ConfigManager.GetAppConfig(ConfigNames.PictureFolders);
 		}
 
 		private void ControlButtons()
@@ -180,10 +244,17 @@ namespace CatFoodManager
 			lastPageBtn.Enabled = nextPageBtn.Enabled = _currentPage != _pageCount;
 		}
 
+		private void SetHeaders()
+		{
+			foreach (DataGridViewColumn column in dataView.Columns)
+			{
+				column.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue(column.HeaderText, out string? header) ? header : column.HeaderText;
+			}
+		}
 
 		private void GetPicturesPath()
 		{
-			var directories = ConfigManager.GetAppConfig("PictureFolders");
+			var directories = ConfigManager.GetAppConfig(ConfigNames.PictureFolders);
 			if (string.IsNullOrWhiteSpace(directories))
 			{
 				MessageBox.Show($"照片路径配置:{directories}无效或者不存在, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -192,10 +263,10 @@ namespace CatFoodManager
 			_pictureFolders = directories.Split(';')
 											?.ToDictionary(d =>
 											{
-												return d.Split(':')[0];
+												return d.Split('-')[0];
 											}, v =>
 											{
-												var directory = v.Split(':')[1]?.ToString();
+												var directory = v.Split('-')[1]?.ToString();
 												if (!directory.IsOrExistDirectory())
 												{
 													return null;
@@ -212,9 +283,10 @@ namespace CatFoodManager
 
 
 
-		private void prePageBtn_Click(object sender, EventArgs e)
-		{
 
-		}
+
+
+
+
 	}
 }

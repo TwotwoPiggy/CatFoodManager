@@ -53,12 +53,19 @@
 			jumpBtn = new Button();
 			jumpPageText = new TextBox();
 			tabPage2 = new TabPage();
+			configLayoutPanel = new TableLayoutPanel();
+			tableLayoutPanel3 = new TableLayoutPanel();
+			savePicConfigBtn = new Button();
+			picConfigText = new TextBox();
 			tabControl1.SuspendLayout();
 			tabPage1.SuspendLayout();
 			viewLayoutPanel.SuspendLayout();
 			searchLayoutPanel.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)dataView).BeginInit();
 			tableLayoutPanel1.SuspendLayout();
+			tabPage2.SuspendLayout();
+			configLayoutPanel.SuspendLayout();
+			tableLayoutPanel3.SuspendLayout();
 			SuspendLayout();
 			// 
 			// tabControl1
@@ -335,6 +342,7 @@
 			nextPageBtn.TabIndex = 7;
 			nextPageBtn.Text = "下一页";
 			nextPageBtn.UseVisualStyleBackColor = true;
+			nextPageBtn.Click += nextPageBtn_Click;
 			// 
 			// lastPageBtn
 			// 
@@ -345,6 +353,7 @@
 			lastPageBtn.TabIndex = 8;
 			lastPageBtn.Text = "末页";
 			lastPageBtn.UseVisualStyleBackColor = true;
+			lastPageBtn.Click += lastPageBtn_Click;
 			// 
 			// jumpBtn
 			// 
@@ -355,6 +364,7 @@
 			jumpBtn.TabIndex = 9;
 			jumpBtn.Text = "跳转到";
 			jumpBtn.UseVisualStyleBackColor = true;
+			jumpBtn.Click += jumpBtn_Click;
 			// 
 			// jumpPageText
 			// 
@@ -367,6 +377,7 @@
 			// 
 			// tabPage2
 			// 
+			tabPage2.Controls.Add(configLayoutPanel);
 			tabPage2.Location = new Point(4, 26);
 			tabPage2.Name = "tabPage2";
 			tabPage2.Padding = new Padding(3);
@@ -374,6 +385,61 @@
 			tabPage2.TabIndex = 1;
 			tabPage2.Text = "配置管理";
 			tabPage2.UseVisualStyleBackColor = true;
+			// 
+			// configLayoutPanel
+			// 
+			configLayoutPanel.ColumnCount = 1;
+			configLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+			configLayoutPanel.Controls.Add(tableLayoutPanel3, 0, 0);
+			configLayoutPanel.Dock = DockStyle.Fill;
+			configLayoutPanel.Location = new Point(3, 3);
+			configLayoutPanel.Margin = new Padding(1);
+			configLayoutPanel.Name = "configLayoutPanel";
+			configLayoutPanel.RowCount = 3;
+			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 39F));
+			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 279F));
+			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 8F));
+			configLayoutPanel.Size = new Size(836, 428);
+			configLayoutPanel.TabIndex = 0;
+			// 
+			// tableLayoutPanel3
+			// 
+			tableLayoutPanel3.ColumnCount = 2;
+			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 764F));
+			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 13F));
+			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+			tableLayoutPanel3.Controls.Add(savePicConfigBtn, 2, 0);
+			tableLayoutPanel3.Controls.Add(picConfigText, 0, 0);
+			tableLayoutPanel3.Dock = DockStyle.Fill;
+			tableLayoutPanel3.Location = new Point(1, 1);
+			tableLayoutPanel3.Margin = new Padding(1);
+			tableLayoutPanel3.Name = "tableLayoutPanel3";
+			tableLayoutPanel3.RowCount = 1;
+			tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+			tableLayoutPanel3.Size = new Size(834, 37);
+			tableLayoutPanel3.TabIndex = 0;
+			// 
+			// savePicConfigBtn
+			// 
+			savePicConfigBtn.Dock = DockStyle.Fill;
+			savePicConfigBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
+			savePicConfigBtn.Location = new Point(765, 1);
+			savePicConfigBtn.Margin = new Padding(1);
+			savePicConfigBtn.Name = "savePicConfigBtn";
+			savePicConfigBtn.Size = new Size(68, 35);
+			savePicConfigBtn.TabIndex = 1;
+			savePicConfigBtn.Text = "保存";
+			savePicConfigBtn.UseVisualStyleBackColor = true;
+			savePicConfigBtn.Click += savePicConfigBtn_Click;
+			// 
+			// picConfigText
+			// 
+			picConfigText.Dock = DockStyle.Fill;
+			picConfigText.Location = new Point(3, 3);
+			picConfigText.Multiline = true;
+			picConfigText.Name = "picConfigText";
+			picConfigText.Size = new Size(758, 31);
+			picConfigText.TabIndex = 2;
 			// 
 			// Main
 			// 
@@ -393,6 +459,10 @@
 			((System.ComponentModel.ISupportInitialize)dataView).EndInit();
 			tableLayoutPanel1.ResumeLayout(false);
 			tableLayoutPanel1.PerformLayout();
+			tabPage2.ResumeLayout(false);
+			configLayoutPanel.ResumeLayout(false);
+			tableLayoutPanel3.ResumeLayout(false);
+			tableLayoutPanel3.PerformLayout();
 			ResumeLayout(false);
 		}
 
@@ -420,5 +490,9 @@
 		private Button jumpBtn;
 		private TextBox jumpPageText;
 		private Button syncBtn;
+		private TableLayoutPanel configLayoutPanel;
+		private TableLayoutPanel tableLayoutPanel3;
+		private Button savePicConfigBtn;
+		private TextBox picConfigText;
 	}
 }

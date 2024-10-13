@@ -14,7 +14,7 @@ namespace CatFoodManager.Core.Models
 
         public string Name { get; set; }
 
-		public CatFoodType FoodType => Name.Contains("猫粮") || Name.Contains("主食") ? CatFoodType.CatFood : CatFoodType.CatSnack;
+		public CatFoodType FoodType { get; set; }
 
 		public int Count { get; set; }
 
@@ -30,6 +30,7 @@ namespace CatFoodManager.Core.Models
 
 		public int FeededCount { get; set; }
 
+		[Ignore]
 		public bool Feeded => Count == FeededCount;
 
 

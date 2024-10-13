@@ -36,7 +36,7 @@ namespace CatFoodManager
 			var tessdataPath = @"D:\Computer\Projects\CatFoodManager\CatFoodManager\bin\Debug\net8.0-windows\tessdata";
 			services.AddSingleton(typeof(Main))
 					.AddTransient<SQLiteHelper>()
-					.AddTransient<OCRHelper>(serviceProvider => new OCRHelper(tessdataPath))
+					.AddTransient(serviceProvider => new OCRHelper(tessdataPath))
 					.AddTransient<IRepository, CommonRepository>()
 					.AddTransient<PictureContentService>()
 					.AddTransient<IService<Brand>, BrandService>(serviceProvider => new BrandService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
