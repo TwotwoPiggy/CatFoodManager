@@ -8,9 +8,10 @@ namespace CatFoodManager.Core.Statics
 {
 	public enum PlatformType
 	{
-		JD = 0,
-		Taobao = 1,
-		PDD = 2,
-		Douyin = 3
+		None = 0,
+		JD = 1,
+		Taobao = 2,
+		PDD = 3,
+		Douyin = 4
 	}
 }

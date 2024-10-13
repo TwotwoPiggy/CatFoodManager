@@ -13,9 +13,19 @@ namespace CatFoodManager.Core.Services
 			_repo.Add(platformRegExp);
 		}
 
+		public void BatchSave(IEnumerable<PlatformRegExp> platformRegExp)
+		{
+			_repo.BatchAdd(platformRegExp);
+		}
+
 		public PlatformRegExp Query(int id)
 		{
 			return _repo.Query<PlatformRegExp>(platformRegExp => platformRegExp.Id == id);
+		}
+
+		public PlatformRegExp Query(string platformName)
+		{
+			return _repo.Query<PlatformRegExp>(platformRegExp => platformRegExp.Name == platformName);
 		}
 
 		public IEnumerable<PlatformRegExp> GetRegExpByPlatform(PlatformType platformType)
@@ -26,6 +36,12 @@ namespace CatFoodManager.Core.Services
 		public IEnumerable<PlatformRegExp> GetAll()
 		{
 			return _repo.QueryList<PlatformRegExp>();
+		}
+
+		public (IEnumerable<PlatformRegExp>, int) GetAllWithCount()
+		{
+			var list = GetAll();
+			return (list, list.Count());
 		}
 
 		public IEnumerable<PlatformRegExp> FuzzyQuery(string queryString)

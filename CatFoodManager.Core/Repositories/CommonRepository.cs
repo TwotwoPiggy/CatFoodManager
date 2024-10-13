@@ -10,6 +10,8 @@ namespace CatFoodManager.Core.Repositories
         public CommonRepository(SQLiteHelper sqliteHelper):base(sqliteHelper) { }
         public void Add<T>(T entity) => _sqliteHelper.Db.Insert(entity);
 
+		public void BatchAdd<T>(IEnumerable<T> entities) => _sqliteHelper.Db.InsertAll(entities);
+
 		public void Update<T>(T entity) where T : new() => _sqliteHelper.Db.Update(entity);
 
 		public T Query<T>(Expression<Func<T, bool>> predExpr) where T : new()
@@ -22,5 +24,6 @@ namespace CatFoodManager.Core.Repositories
 			=> _sqliteHelper.Db.Query<T>(query);
 
 		public void Delete<T>(object key) => _sqliteHelper.Db.Delete<T>(key);
+
 	}
 }

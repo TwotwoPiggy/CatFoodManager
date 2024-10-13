@@ -12,14 +12,30 @@ namespace CatFoodManager.Core.Services
 			_repo.Add(catFood);
 		}
 
+		public void BatchSave(IEnumerable<CatFood> catFoods)
+		{
+			_repo.BatchAdd(catFoods);
+		}
+
 		public CatFood Query(int id)
 		{
 			return _repo.Query<CatFood>(catFood => catFood.Id == id);
 		}
 
+		public CatFood Query(string catFoodName)
+		{
+			return _repo.Query<CatFood>(catFood => catFood.Name == catFoodName);
+		}
+
 		public IEnumerable<CatFood> GetAll()
 		{
 			return _repo.QueryList<CatFood>();
+		}
+
+		public (IEnumerable<CatFood>, int) GetAllWithCount()
+		{
+			var list = GetAll();
+			return (list, list.Count());
 		}
 
 		public IEnumerable<CatFood> FuzzyQuery(string queryString)
@@ -36,5 +52,7 @@ namespace CatFoodManager.Core.Services
 		{
 			_repo.Delete<CatFood>(id);
 		}
+
+
 	}
 }

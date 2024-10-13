@@ -12,14 +12,30 @@ namespace CatFoodManager.Core.Services
 			_repo.Add(factory);
 		}
 
+		public void BatchSave(IEnumerable<Factory> factories)
+		{
+			_repo.BatchAdd(factories);
+		}
+
 		public Factory Query(int id)
 		{
 			return _repo.Query<Factory>(factory => factory.Id == id);
 		}
 
+		public Factory Query(string factoryName)
+		{
+			return _repo.Query<Factory>(factory => factory.Name == factoryName);
+		}
+
 		public IEnumerable<Factory> GetAll()
 		{
 			return _repo.QueryList<Factory>();
+		}
+
+		public (IEnumerable<Factory>, int) GetAllWithCount()
+		{
+			var list = GetAll();
+			return (list, list.Count());
 		}
 
 		public IEnumerable<Factory> FuzzyQuery(string queryString)

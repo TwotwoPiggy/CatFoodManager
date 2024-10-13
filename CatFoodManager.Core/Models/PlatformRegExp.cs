@@ -14,6 +14,6 @@ namespace CatFoodManager.Core.Models
 
         public string RegularExpression { get; set; }
 
-		public string Field { get; set; }
+		public Dictionary<string,int> FieldInfos { get; set; }
 	}
 }

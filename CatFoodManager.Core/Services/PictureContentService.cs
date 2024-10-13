@@ -79,10 +79,18 @@ namespace CatFoodManager.Core.Services
 			}
 		}
 
-		public CatFood GenerateCatFood(string content, string regPattern)
+		public (CatFood, string) GenerateCatFood(string content, string regPattern, Dictionary<string, int> fieldInfos, string picturePath)
 		{
-			var catFood = new CatFood();
-			return catFood;
+			var catFood = new CatFood() { PicturePath = picturePath };
+			var regex = new Regex(regPattern, RegexOptions.IgnoreCase);
+			var groups = regex.Match(content).Groups;
+			catFood.OrderId = groups[fieldInfos["orderId"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
+			catFood.Name = groups[fieldInfos["name"]].Value;
+			catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
+			catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;
+			catFood.PurchasedAt = DateTime.TryParse(groups[fieldInfos["purchasedAt"]].Value, out DateTime purchasedAt) ? purchasedAt : DateTime.Now;
+			var shopName = groups[fieldInfos["shopName"]].Value;
+			return (catFood, shopName);
 		}
 
 		#region private method
