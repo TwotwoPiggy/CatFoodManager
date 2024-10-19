@@ -2,7 +2,15 @@ using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Services;
 using CatFoodManager.Core.Statics;
+using CatFoodManager.Core.Utils;
 using CommonTools;
+using OpenCvSharp;
+using System.ComponentModel;
+using System.Data;
+using System.Net.WebSockets;
+using System.Windows.Forms;
+using static ReaLTaiizor.Manager.MaterialSkinManager;
+using static SQLite.TableMapping;
 
 namespace CatFoodManager
 {
@@ -44,6 +52,7 @@ namespace CatFoodManager
 
 		#region view
 		private BindingSource _bindingSource = [];
+		private PictureView _pictureView;
 		#endregion
 
 		#region fields
@@ -61,14 +70,7 @@ namespace CatFoodManager
 			_pictureContentService = pictureContentService;
 			_pictureFolders = [];
 			InitializeContext();
-			//InitComponents();
-			//SetLabels();
-			//ControlButtons();
 		}
-
-		#region public methods
-
-		#endregion
 
 		#region events
 		private void Main_Load(object sender, EventArgs e)
@@ -76,6 +78,7 @@ namespace CatFoodManager
 			LoadConfigs();
 			InitComponents();
 			LoadData();
+			pageSizeComboBox.SelectedIndexChanged += pageSizeComboBox_SelectedIndexChanged;
 		}
 
 		//todo: progress bar
@@ -105,6 +108,7 @@ namespace CatFoodManager
 					{
 						continue;
 					}
+					regPattern.AutoFillFields(true);
 					foreach (var path in paths)
 					{
 						content = _pictureContentService.GetContentFromPicture(path, needReduceNoise: true);
@@ -129,7 +133,65 @@ namespace CatFoodManager
 			}
 		}
 
-		private void pageSizeComboBox_SelectedIndexChanged(object sender, EventArgs e)
+		#region Main View
+		private void dataView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+		{
+			var dataGridView = sender as DataGridView;
+			if (dataGridView != null && dataGridView.EditingControl != null)
+			{
+				var currentCell = dataGridView.CurrentCell;
+				var id = currentCell.OwningRow.Cells["Id"].Value;
+				var valueToUpdate = currentCell.EditedFormattedValue;
+				var catFood = _catFoodSerivce.Query((long)id);
+				if (catFood != null && valueToUpdate != null)
+				{
+					var fieldName = currentCell.OwningColumn.Name;
+					if (fieldName == "FoodTypeToShow")
+					{
+						fieldName = "FoodType";
+					}
+					var propertyToUpdate = catFood.GetType().GetProperty(fieldName);
+					var typeConverter = new TypeConverter();
+					propertyToUpdate?.SetValue(catFood, TypeDescriptor.GetConverter(propertyToUpdate.PropertyType).ConvertFrom(valueToUpdate));
+					_catFoodSerivce.Update(catFood);
+				}
+				MessageBox.Show("已更新!", "操作成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			}
+		}
+
+		/// <summary>
+		/// enable the comboBox value change event
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void dataView_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+		{
+			if (dataView.IsCurrentCellDirty)
+			{
+				dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
+			}
+		}
+
+
+		private void DataView_CellClick(object? sender, DataGridViewCellEventArgs e)
+		{
+			// Ignore clicks that are not on button cells. 
+			if (e.RowIndex < 0 || e.ColumnIndex !=
+				dataView.Columns["PictureButton"].Index) return;
+
+			var dataGridView = sender as DataGridView;
+			if (dataGridView != null)
+			{
+				var picturePath = dataGridView.Rows[e.RowIndex].Cells["PicturePath"].Value.ToString();
+				_pictureView = _pictureView == null || _pictureView.IsDisposed ? new PictureView(picturePath) : _pictureView;
+				_pictureView.Show();
+			}
+		}
+		#endregion
+
+		#region page control
+
+		private void pageSizeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
 		{
 			LoadData();
 		}
@@ -195,10 +257,17 @@ namespace CatFoodManager
 		}
 
 
+		#endregion
+
+		#region config control
+
 		private void savePicConfigBtn_Click(object sender, EventArgs e)
 		{
-			ConfigManager.SetAppConfig(ConfigNames.PictureFolders,picConfigText.Text);
+			ConfigManager.SetAppConfig(ConfigNames.PictureFolders, picConfigText.Text);
 		}
+
+		#endregion
+
 		#endregion
 
 		#region private methods
@@ -212,6 +281,8 @@ namespace CatFoodManager
 		private void InitComponents()
 		{
 			pageSizeComboBox.SelectedIndex = 0;
+			dataView.EditMode = DataGridViewEditMode.EditOnEnter;
+			dataView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter; 
 			_currentPage = 1;
 		}
 
@@ -227,7 +298,7 @@ namespace CatFoodManager
 			_bindingSource.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
 			dataView.DataSource = _bindingSource;
 			_pageCount = Convert.ToInt32(Math.Ceiling((double)_totalCount / _pageSize));
-			SetHeaders();
+			SetColumns();
 			SetLabels();
 			ControlButtons();
 			Refresh();
@@ -244,12 +315,30 @@ namespace CatFoodManager
 			lastPageBtn.Enabled = nextPageBtn.Enabled = _currentPage != _pageCount;
 		}
 
-		private void SetHeaders()
+		private void SetColumns()
 		{
+			var comboBoxColumn = CreateComboBoxWithEnums();
+			var buttonColumn = CreateButtonCellColumn();
 			foreach (DataGridViewColumn column in dataView.Columns)
 			{
+				column.Visible = !CustomFilters.ColumnsDisableToShow.Contains(column.HeaderText);
+				column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 				column.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue(column.HeaderText, out string? header) ? header : column.HeaderText;
+				column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+				column.ReadOnly = false;
+				if (column.Name == "FoodType")
+				{
+					comboBoxColumn.DisplayIndex = column.DisplayIndex;
+				}
+				if (column.Name == "PicturePath")
+				{
+					buttonColumn.DisplayIndex = column.DisplayIndex;
+				}
 			}
+			dataView.Columns.Add(comboBoxColumn);
+			dataView.Columns.Add(buttonColumn);
+			dataView.CellClick += new DataGridViewCellEventHandler(DataView_CellClick);
+
 		}
 
 		private void GetPicturesPath()
@@ -260,32 +349,67 @@ namespace CatFoodManager
 				MessageBox.Show($"照片路径配置:{directories}无效或者不存在, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				return;
 			}
-			_pictureFolders = directories.Split(';')
-											?.ToDictionary(d =>
+			_pictureFolders = directories.TrimEnd(';')
+										.Split(';')
+										?.ToDictionary(d =>
+										{
+											return d.Split('-')[0];
+										}, v =>
+										{
+											var directory = v.Split('-')[1]?.ToString();
+											if (!directory.IsOrExistDirectory())
 											{
-												return d.Split('-')[0];
-											}, v =>
-											{
-												var directory = v.Split('-')[1]?.ToString();
-												if (!directory.IsOrExistDirectory())
-												{
-													return null;
-												}
-												return FileManager.GetFiles(directory).ToArray();
-											});
+												return null;
+											}
+											return FileManager
+														.GetFiles(directory)
+														.Where(p => CustomFilters
+																		.PictureExtensions
+																		.Contains(p.GetExtension().TrimStart('.').ToLower()))
+														.ToArray();
+										});
 			if (_pictureFolders?.Count == 0)
 			{
 				var message = $"照片路径配置:{directories}无效或者不存在, 请检查!";
 				throw new ArgumentException(message);
 			}
 		}
+
+
+		private DataGridViewComboBoxColumn CreateComboBoxWithEnums()
+		{
+			var comboBox = new DataGridViewComboBoxColumn();
+			comboBox.DataSource = Enum.GetValues(typeof(CatFoodType));
+			comboBox.DataPropertyName = "FoodType";
+
+			comboBox.Name = "FoodTypeToShow";
+			comboBox.Visible = !CustomFilters.ColumnsDisableToShow.Contains("FoodTypeToShow");
+			comboBox.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue("FoodTypeName", out string? header) ? header : comboBox.HeaderText;
+			comboBox.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			comboBox.ReadOnly = false;
+			comboBox.Width = 70;
+			comboBox.Resizable = DataGridViewTriState.False;
+			comboBox.DropDownWidth = 200;
+			comboBox.MaxDropDownItems = 5;
+			return comboBox;
+		}
+
+		private DataGridViewButtonColumn CreateButtonCellColumn()
+		{
+			var buttonColumn = new DataGridViewButtonColumn();
+			buttonColumn.Visible = !CustomFilters.ColumnsDisableToShow.Contains("PictureButton");
+			buttonColumn.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue("PicturePath", out string? header) ? header : buttonColumn.HeaderText;
+			buttonColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			buttonColumn.DefaultCellStyle.BackColor = Color.Gray;
+			buttonColumn.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
+			buttonColumn.Name = "PictureButton";
+			buttonColumn.Text = "查看照片";
+			buttonColumn.Width = 100;
+			buttonColumn.Resizable = DataGridViewTriState.False;
+			buttonColumn.UseColumnTextForButtonValue = true;
+			return buttonColumn;
+		}
 		#endregion
-
-
-
-
-
-
 
 
 	}

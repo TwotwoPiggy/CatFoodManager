@@ -18,7 +18,7 @@ namespace CatFoodManager.Core.Services
 			_repo.BatchAdd(platformRegExp);
 		}
 
-		public PlatformRegExp Query(int id)
+		public PlatformRegExp Query(long id)
 		{
 			return _repo.Query<PlatformRegExp>(platformRegExp => platformRegExp.Id == id);
 		}

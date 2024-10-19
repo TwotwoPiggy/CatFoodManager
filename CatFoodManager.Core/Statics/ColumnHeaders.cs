@@ -13,14 +13,15 @@ namespace CatFoodManager.Core.Statics
 			{ "Id", "Id" },
 			{ "OrderId", "订单号" },
 			{ "Name", "名称" },
-			{ "FoodType", "类型" },
+			{ "FoodTypeName", "类型" },
 			{ "Count", "数量" },
 			{ "Price", "价格" },
-			{ "Weights", "份量" },
+			{ "Weights", "份量(g)" },
 			{ "PurchasedAt", "购买时间" },
 			{ "UpdatedAt", "更新时间" },
 			{ "FeededCount", "已投喂数量" },
-			{ "Feeded", "是否已全部投喂" }
+			{ "Feeded", "是否已全部投喂" },
+			{ "PicturePath", "照片" }
 		};
 	}
 }

@@ -12,7 +12,7 @@ namespace CatFoodManager.Core.Interfaces
 	{
 		void Save(T entity);
 		void BatchSave(IEnumerable<T> entities);
-		T Query(int id);
+		T Query(long id);
 		T Query(string name);
 		IEnumerable<T> GetAll();
 		(IEnumerable<T>, int) GetAllWithCount();

@@ -23,7 +23,7 @@ namespace CatFoodManager.Core.Services
 			_repo.BatchAdd(brands);
 		}
 
-		public Brand Query(int id)
+		public Brand Query(long id)
 		{
 			return _repo.Query<Brand>(brand => brand.Id == id);
 		}

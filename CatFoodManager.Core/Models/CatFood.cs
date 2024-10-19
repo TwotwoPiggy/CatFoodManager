@@ -10,9 +10,9 @@ namespace CatFoodManager.Core.Models
 		[PrimaryKey, AutoIncrement]
 		public long Id { get; set; }
 
-        public string OrderId { get; set; }
+		public string OrderId { get; set; }
 
-        public string Name { get; set; }
+		public string Name { get; set; }
 
 		public CatFoodType FoodType { get; set; }
 
@@ -22,17 +22,26 @@ namespace CatFoodManager.Core.Models
 
 		public int Weights { get; set; }
 
-        public string PicturePath { get; set; }
+		public string PicturePath { get; set; }
 
-        public DateTime PurchasedAt { get; set; }
+		public DateTime PurchasedAt { get; set; }
 
-        public DateTime UpdatedAt { get; set; }
+		public DateTime UpdatedAt { get; set; }
 
 		public int FeededCount { get; set; }
 
 		[Ignore]
-		public bool Feeded => Count == FeededCount;
-
+		public bool Feeded
+		{
+			get
+			{
+				return Count == FeededCount;
+			}
+			set
+			{
+				FeededCount = value ? Count : FeededCount;
+			}
+		}
 
 		[ForeignKey(typeof(Brand))]
 		public int BrandId { get; set; }
@@ -44,4 +53,5 @@ namespace CatFoodManager.Core.Models
 		[ManyToOne]
 		public Factory Factory { get; set; }
 	}
+
 }

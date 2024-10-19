@@ -1,20 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CatFoodManager.Core.Utils;
+using System.ComponentModel;
 
 namespace CatFoodManager.Core.Statics
 {
-    public enum CatFoodType
+	[TypeConverter(typeof(CustomEnumConverter))]
+	public enum CatFoodType
     {
-        /// <summary>
-        /// 主食
-        /// </summary>
+        [Description("主食")]
         CatFood = 0,
-        /// <summary>
-        /// 零食
-        /// </summary>
-        CatSnack = 1
+
+		[Description("零食")]
+		CatSnack = 1
     }
 }

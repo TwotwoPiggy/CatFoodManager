@@ -17,7 +17,7 @@ namespace CatFoodManager.Core.Services
 			_repo.BatchAdd(factories);
 		}
 
-		public Factory Query(int id)
+		public Factory Query(long id)
 		{
 			return _repo.Query<Factory>(factory => factory.Id == id);
 		}

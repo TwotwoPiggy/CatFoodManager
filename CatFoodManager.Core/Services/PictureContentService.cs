@@ -82,11 +82,11 @@ namespace CatFoodManager.Core.Services
 
 		public (CatFood, string) GenerateCatFood(string content, string regPattern, Dictionary<string, int> fieldInfos, string picturePath)
 		{
-			var catFood = new CatFood() { PicturePath = picturePath };
+			var catFood = new CatFood() { PicturePath = picturePath, UpdatedAt = DateTime.Now };
 			var regex = new Regex(regPattern, RegexOptions.IgnoreCase);
 			var groups = regex.Match(content).Groups;
-			catFood.OrderId = groups[fieldInfos["orderId"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
-			catFood.Name = groups[fieldInfos["name"]].Value;
+			catFood.OrderId = groups[fieldInfos["orderId"]].Value;
+			catFood.Name = groups[fieldInfos["name"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
 			catFood.FoodType = catFood.Name.Contains("猫粮") || catFood.Name.Contains("主食") ? CatFoodType.CatFood : CatFoodType.CatSnack;
 			catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
 			catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;
@@ -96,17 +96,6 @@ namespace CatFoodManager.Core.Services
 		}
 
 		#region private method
-
-		private string Match(string content, string regPattern)
-		{
-			Regex reg = new Regex(regPattern, RegexOptions.IgnoreCase);
-			var result = reg.Match(content).Groups.Values.LastOrDefault();
-			if (result != null && !string.IsNullOrWhiteSpace(result.Value))
-			{
-
-			}
-			return "";
-		}
 
 		#endregion
 	}

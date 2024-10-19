@@ -209,6 +209,8 @@
 			dataView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
 			dataView.Size = new Size(834, 356);
 			dataView.TabIndex = 1;
+			dataView.CellValueChanged += dataView_CellValueChanged;
+			dataView.CurrentCellDirtyStateChanged += dataView_CurrentCellDirtyStateChanged;
 			// 
 			// tableLayoutPanel1
 			// 
@@ -297,7 +299,6 @@
 			pageSizeComboBox.Name = "pageSizeComboBox";
 			pageSizeComboBox.Size = new Size(53, 25);
 			pageSizeComboBox.TabIndex = 3;
-			pageSizeComboBox.SelectedIndexChanged += pageSizeComboBox_SelectedIndexChanged;
 			// 
 			// pageSizeLineLabel
 			// 
@@ -465,6 +466,7 @@
 			tableLayoutPanel3.PerformLayout();
 			ResumeLayout(false);
 		}
+
 
 		#endregion
 
