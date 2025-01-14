@@ -49,6 +49,12 @@ namespace CatFoodManager.Core.Services
 			return _repo.FuzzyQuery<Brand>(queryString);
 		}
 
+		public (IEnumerable<Brand>, int) FuzzyQueryWithCount(string queryString)
+		{
+			var list = _repo.FuzzyQuery<Brand>(queryString);
+			return (list, list.Count());
+		}
+
 		public void Update(Brand brand)
 		{
 			_repo.Update(brand);
@@ -58,7 +64,5 @@ namespace CatFoodManager.Core.Services
 		{
 			_repo.Delete<Brand>(id);
 		}
-
-
 	}
 }

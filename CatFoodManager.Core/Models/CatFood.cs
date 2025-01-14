@@ -1,6 +1,7 @@
 ﻿using CatFoodManager.Core.Statics;
 using SQLite;
 using SQLiteNetExtensions.Attributes;
+using System.Runtime.Serialization;
 
 
 namespace CatFoodManager.Core.Models
@@ -8,6 +9,7 @@ namespace CatFoodManager.Core.Models
 	public class CatFood
 	{
 		[PrimaryKey, AutoIncrement]
+		[DataMember]
 		public long Id { get; set; }
 
 		public string OrderId { get; set; }

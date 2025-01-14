@@ -164,6 +164,7 @@
 			searchBtn.TabIndex = 2;
 			searchBtn.Text = "搜索";
 			searchBtn.UseVisualStyleBackColor = true;
+			searchBtn.Click += searchBtn_Click;
 			// 
 			// syncBtn
 			// 

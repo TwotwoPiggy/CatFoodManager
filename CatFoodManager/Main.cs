@@ -2,15 +2,10 @@ using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Services;
 using CatFoodManager.Core.Statics;
-using CatFoodManager.Core.Utils;
 using CommonTools;
-using OpenCvSharp;
+using SQLiteNetExtensions.Attributes;
 using System.ComponentModel;
 using System.Data;
-using System.Net.WebSockets;
-using System.Windows.Forms;
-using static ReaLTaiizor.Manager.MaterialSkinManager;
-using static SQLite.TableMapping;
 
 namespace CatFoodManager
 {
@@ -132,6 +127,23 @@ namespace CatFoodManager
 				LoadData();
 			}
 		}
+
+		#region search control
+		private void searchBtn_Click(object sender, EventArgs e)
+		{
+			var searchKey = searchText.Text;
+			if (string.IsNullOrWhiteSpace(searchKey))
+			{
+				return;
+			}
+			var properties = typeof(CatFood)
+									.GetProperties()
+									.Where(p=> !p.CustomAttributes.Any(a=> a.AttributeType.Name == "IgnoreAttribute" || a.AttributeType.BaseType?.Name == "RelationshipAttribute"))
+									.Select(p => $"OR {p.Name} LIKE '%{searchKey}%'");
+			var queryString = $"SELECT * FROM CatFood WHERE FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}' {String.Join(' ', properties)}";
+			LoadData(queryString);
+		}
+		#endregion
 
 		#region Main View
 		private void dataView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -282,7 +294,7 @@ namespace CatFoodManager
 		{
 			pageSizeComboBox.SelectedIndex = 0;
 			dataView.EditMode = DataGridViewEditMode.EditOnEnter;
-			dataView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter; 
+			dataView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 			_currentPage = 1;
 		}
 
@@ -292,12 +304,14 @@ namespace CatFoodManager
 			pageInfoLabel.Text = $"µ±Ç°Ò³ {_currentPage}/{_pageCount}";
 		}
 
-		private void LoadData()
+		private void LoadData(string filter = null)
 		{
-			(var catFoodResults, _totalCount) = _catFoodSerivce.GetAllWithCount();
+			var isFirstLoad = _bindingSource == null;
+			(var catFoodResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _catFoodSerivce.GetAllWithCount() : _catFoodSerivce.FuzzyQueryWithCount(filter);
 			_bindingSource.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
 			dataView.DataSource = _bindingSource;
 			_pageCount = Convert.ToInt32(Math.Ceiling((double)_totalCount / _pageSize));
+
 			SetColumns();
 			SetLabels();
 			ControlButtons();
@@ -316,7 +330,7 @@ namespace CatFoodManager
 		}
 
 		private void SetColumns()
-		{
+		{ 
 			var comboBoxColumn = CreateComboBoxWithEnums();
 			var buttonColumn = CreateButtonCellColumn();
 			foreach (DataGridViewColumn column in dataView.Columns)
@@ -338,6 +352,11 @@ namespace CatFoodManager
 			dataView.Columns.Add(comboBoxColumn);
 			dataView.Columns.Add(buttonColumn);
 			dataView.CellClick += new DataGridViewCellEventHandler(DataView_CellClick);
+
+		}
+		
+		private void SetColumn()
+		{
 
 		}
 
@@ -410,7 +429,6 @@ namespace CatFoodManager
 			return buttonColumn;
 		}
 		#endregion
-
 
 	}
 }

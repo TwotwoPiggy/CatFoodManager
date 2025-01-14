@@ -43,6 +43,13 @@ namespace CatFoodManager.Core.Services
 			return _repo.FuzzyQuery<Factory>(queryString);
 		}
 
+		public (IEnumerable<Factory>, int) FuzzyQueryWithCount(string queryString)
+		{
+			var list = _repo.FuzzyQuery<Factory>(queryString);
+			return (list, list.Count());
+		}
+
+
 		public void Update(Factory factory)
 		{
 			_repo.Update(factory);
