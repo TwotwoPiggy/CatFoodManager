@@ -28,10 +28,16 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			components = new System.ComponentModel.Container();
 			DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
 			DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
 			DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
-			tabControl1 = new TabControl();
+			catFoodBindingSource = new BindingSource(components);
+			tabPage3 = new TabPage();
+			configLayoutPanel = new TableLayoutPanel();
+			tableLayoutPanel3 = new TableLayoutPanel();
+			savePicConfigBtn = new Button();
+			picConfigText = new TextBox();
 			tabPage1 = new TabPage();
 			viewLayoutPanel = new TableLayoutPanel();
 			searchLayoutPanel = new TableLayoutPanel();
@@ -39,6 +45,7 @@
 			searchText = new TextBox();
 			searchBtn = new Button();
 			syncBtn = new Button();
+			brandManagerBtn = new Button();
 			dataView = new DataGridView();
 			tableLayoutPanel1 = new TableLayoutPanel();
 			totalLabel = new Label();
@@ -52,32 +59,88 @@
 			lastPageBtn = new Button();
 			jumpBtn = new Button();
 			jumpPageText = new TextBox();
-			tabPage2 = new TabPage();
-			configLayoutPanel = new TableLayoutPanel();
-			tableLayoutPanel3 = new TableLayoutPanel();
-			savePicConfigBtn = new Button();
-			picConfigText = new TextBox();
-			tabControl1.SuspendLayout();
+			tabControl1 = new TabControl();
+			((System.ComponentModel.ISupportInitialize)catFoodBindingSource).BeginInit();
+			tabPage3.SuspendLayout();
+			configLayoutPanel.SuspendLayout();
+			tableLayoutPanel3.SuspendLayout();
 			tabPage1.SuspendLayout();
 			viewLayoutPanel.SuspendLayout();
 			searchLayoutPanel.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)dataView).BeginInit();
 			tableLayoutPanel1.SuspendLayout();
-			tabPage2.SuspendLayout();
-			configLayoutPanel.SuspendLayout();
-			tableLayoutPanel3.SuspendLayout();
+			tabControl1.SuspendLayout();
 			SuspendLayout();
 			// 
-			// tabControl1
+			// catFoodBindingSource
 			// 
-			tabControl1.Controls.Add(tabPage1);
-			tabControl1.Controls.Add(tabPage2);
-			tabControl1.Dock = DockStyle.Fill;
-			tabControl1.Location = new Point(0, 0);
-			tabControl1.Name = "tabControl1";
-			tabControl1.SelectedIndex = 0;
-			tabControl1.Size = new Size(850, 464);
-			tabControl1.TabIndex = 0;
+			catFoodBindingSource.DataSource = typeof(Core.Models.CatFood);
+			// 
+			// tabPage3
+			// 
+			tabPage3.Controls.Add(configLayoutPanel);
+			tabPage3.Location = new Point(4, 26);
+			tabPage3.Name = "tabPage3";
+			tabPage3.Padding = new Padding(3);
+			tabPage3.Size = new Size(842, 434);
+			tabPage3.TabIndex = 1;
+			tabPage3.Text = "配置管理";
+			tabPage3.UseVisualStyleBackColor = true;
+			// 
+			// configLayoutPanel
+			// 
+			configLayoutPanel.ColumnCount = 1;
+			configLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+			configLayoutPanel.Controls.Add(tableLayoutPanel3, 0, 0);
+			configLayoutPanel.Dock = DockStyle.Fill;
+			configLayoutPanel.Location = new Point(3, 3);
+			configLayoutPanel.Margin = new Padding(1);
+			configLayoutPanel.Name = "configLayoutPanel";
+			configLayoutPanel.RowCount = 3;
+			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 39F));
+			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 279F));
+			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 8F));
+			configLayoutPanel.Size = new Size(836, 428);
+			configLayoutPanel.TabIndex = 0;
+			// 
+			// tableLayoutPanel3
+			// 
+			tableLayoutPanel3.ColumnCount = 2;
+			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 764F));
+			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 13F));
+			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+			tableLayoutPanel3.Controls.Add(savePicConfigBtn, 2, 0);
+			tableLayoutPanel3.Controls.Add(picConfigText, 0, 0);
+			tableLayoutPanel3.Dock = DockStyle.Fill;
+			tableLayoutPanel3.Location = new Point(1, 1);
+			tableLayoutPanel3.Margin = new Padding(1);
+			tableLayoutPanel3.Name = "tableLayoutPanel3";
+			tableLayoutPanel3.RowCount = 1;
+			tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+			tableLayoutPanel3.Size = new Size(834, 37);
+			tableLayoutPanel3.TabIndex = 0;
+			// 
+			// savePicConfigBtn
+			// 
+			savePicConfigBtn.Dock = DockStyle.Fill;
+			savePicConfigBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
+			savePicConfigBtn.Location = new Point(765, 1);
+			savePicConfigBtn.Margin = new Padding(1);
+			savePicConfigBtn.Name = "savePicConfigBtn";
+			savePicConfigBtn.Size = new Size(68, 35);
+			savePicConfigBtn.TabIndex = 1;
+			savePicConfigBtn.Text = "保存";
+			savePicConfigBtn.UseVisualStyleBackColor = true;
+			savePicConfigBtn.Click += savePicConfigBtn_Click;
+			// 
+			// picConfigText
+			// 
+			picConfigText.Dock = DockStyle.Fill;
+			picConfigText.Location = new Point(3, 3);
+			picConfigText.Multiline = true;
+			picConfigText.Name = "picConfigText";
+			picConfigText.Size = new Size(758, 31);
+			picConfigText.TabIndex = 2;
 			// 
 			// tabPage1
 			// 
@@ -112,15 +175,17 @@
 			// 
 			// searchLayoutPanel
 			// 
-			searchLayoutPanel.ColumnCount = 4;
+			searchLayoutPanel.ColumnCount = 5;
 			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 69F));
-			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
-			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 634F));
-			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 14F));
-			searchLayoutPanel.Controls.Add(searchLabel, 1, 0);
-			searchLayoutPanel.Controls.Add(searchText, 2, 0);
-			searchLayoutPanel.Controls.Add(searchBtn, 3, 0);
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 93F));
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 63F));
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 561F));
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 21F));
+			searchLayoutPanel.Controls.Add(searchLabel, 2, 0);
+			searchLayoutPanel.Controls.Add(searchText, 3, 0);
+			searchLayoutPanel.Controls.Add(searchBtn, 4, 0);
 			searchLayoutPanel.Controls.Add(syncBtn, 0, 0);
+			searchLayoutPanel.Controls.Add(brandManagerBtn, 1, 0);
 			searchLayoutPanel.Dock = DockStyle.Fill;
 			searchLayoutPanel.Location = new Point(0, 0);
 			searchLayoutPanel.Margin = new Padding(0);
@@ -135,7 +200,7 @@
 			searchLabel.Anchor = AnchorStyles.Right;
 			searchLabel.AutoSize = true;
 			searchLabel.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
-			searchLabel.Location = new Point(92, 6);
+			searchLabel.Location = new Point(178, 6);
 			searchLabel.Margin = new Padding(0);
 			searchLabel.Name = "searchLabel";
 			searchLabel.Size = new Size(47, 22);
@@ -146,21 +211,23 @@
 			// searchText
 			// 
 			searchText.Dock = DockStyle.Fill;
-			searchText.Location = new Point(140, 1);
+			searchText.Font = new Font("Microsoft YaHei UI", 15F);
+			searchText.Location = new Point(226, 1);
 			searchText.Margin = new Padding(1);
-			searchText.Multiline = true;
 			searchText.Name = "searchText";
-			searchText.Size = new Size(632, 32);
+			searchText.Size = new Size(559, 33);
 			searchText.TabIndex = 1;
+			searchText.TextChanged += searchText_TextChanged;
+			searchText.KeyDown += searchText_KeyDown;
 			// 
 			// searchBtn
 			// 
 			searchBtn.Dock = DockStyle.Fill;
 			searchBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
-			searchBtn.Location = new Point(774, 1);
+			searchBtn.Location = new Point(787, 1);
 			searchBtn.Margin = new Padding(1);
 			searchBtn.Name = "searchBtn";
-			searchBtn.Size = new Size(65, 32);
+			searchBtn.Size = new Size(52, 32);
 			searchBtn.TabIndex = 2;
 			searchBtn.Text = "搜索";
 			searchBtn.UseVisualStyleBackColor = true;
@@ -177,6 +244,18 @@
 			syncBtn.Text = "同步";
 			syncBtn.UseVisualStyleBackColor = true;
 			syncBtn.Click += syncBtn_Click;
+			// 
+			// brandManagerBtn
+			// 
+			brandManagerBtn.Dock = DockStyle.Fill;
+			brandManagerBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
+			brandManagerBtn.Location = new Point(72, 3);
+			brandManagerBtn.Name = "brandManagerBtn";
+			brandManagerBtn.Size = new Size(87, 28);
+			brandManagerBtn.TabIndex = 4;
+			brandManagerBtn.Text = "品牌管理";
+			brandManagerBtn.UseVisualStyleBackColor = true;
+			brandManagerBtn.Click += brandManagerBtn_Click;
 			// 
 			// dataView
 			// 
@@ -377,71 +456,16 @@
 			jumpPageText.Size = new Size(51, 26);
 			jumpPageText.TabIndex = 10;
 			// 
-			// tabPage2
+			// tabControl1
 			// 
-			tabPage2.Controls.Add(configLayoutPanel);
-			tabPage2.Location = new Point(4, 26);
-			tabPage2.Name = "tabPage2";
-			tabPage2.Padding = new Padding(3);
-			tabPage2.Size = new Size(842, 434);
-			tabPage2.TabIndex = 1;
-			tabPage2.Text = "配置管理";
-			tabPage2.UseVisualStyleBackColor = true;
-			// 
-			// configLayoutPanel
-			// 
-			configLayoutPanel.ColumnCount = 1;
-			configLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-			configLayoutPanel.Controls.Add(tableLayoutPanel3, 0, 0);
-			configLayoutPanel.Dock = DockStyle.Fill;
-			configLayoutPanel.Location = new Point(3, 3);
-			configLayoutPanel.Margin = new Padding(1);
-			configLayoutPanel.Name = "configLayoutPanel";
-			configLayoutPanel.RowCount = 3;
-			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 39F));
-			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 279F));
-			configLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 8F));
-			configLayoutPanel.Size = new Size(836, 428);
-			configLayoutPanel.TabIndex = 0;
-			// 
-			// tableLayoutPanel3
-			// 
-			tableLayoutPanel3.ColumnCount = 2;
-			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 764F));
-			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 13F));
-			tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
-			tableLayoutPanel3.Controls.Add(savePicConfigBtn, 2, 0);
-			tableLayoutPanel3.Controls.Add(picConfigText, 0, 0);
-			tableLayoutPanel3.Dock = DockStyle.Fill;
-			tableLayoutPanel3.Location = new Point(1, 1);
-			tableLayoutPanel3.Margin = new Padding(1);
-			tableLayoutPanel3.Name = "tableLayoutPanel3";
-			tableLayoutPanel3.RowCount = 1;
-			tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-			tableLayoutPanel3.Size = new Size(834, 37);
-			tableLayoutPanel3.TabIndex = 0;
-			// 
-			// savePicConfigBtn
-			// 
-			savePicConfigBtn.Dock = DockStyle.Fill;
-			savePicConfigBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
-			savePicConfigBtn.Location = new Point(765, 1);
-			savePicConfigBtn.Margin = new Padding(1);
-			savePicConfigBtn.Name = "savePicConfigBtn";
-			savePicConfigBtn.Size = new Size(68, 35);
-			savePicConfigBtn.TabIndex = 1;
-			savePicConfigBtn.Text = "保存";
-			savePicConfigBtn.UseVisualStyleBackColor = true;
-			savePicConfigBtn.Click += savePicConfigBtn_Click;
-			// 
-			// picConfigText
-			// 
-			picConfigText.Dock = DockStyle.Fill;
-			picConfigText.Location = new Point(3, 3);
-			picConfigText.Multiline = true;
-			picConfigText.Name = "picConfigText";
-			picConfigText.Size = new Size(758, 31);
-			picConfigText.TabIndex = 2;
+			tabControl1.Controls.Add(tabPage1);
+			tabControl1.Controls.Add(tabPage3);
+			tabControl1.Dock = DockStyle.Fill;
+			tabControl1.Location = new Point(0, 0);
+			tabControl1.Name = "tabControl1";
+			tabControl1.SelectedIndex = 0;
+			tabControl1.Size = new Size(850, 464);
+			tabControl1.TabIndex = 0;
 			// 
 			// Main
 			// 
@@ -453,7 +477,11 @@
 			Name = "Main";
 			Text = "CatFoodManager";
 			Load += Main_Load;
-			tabControl1.ResumeLayout(false);
+			((System.ComponentModel.ISupportInitialize)catFoodBindingSource).EndInit();
+			tabPage3.ResumeLayout(false);
+			configLayoutPanel.ResumeLayout(false);
+			tableLayoutPanel3.ResumeLayout(false);
+			tableLayoutPanel3.PerformLayout();
 			tabPage1.ResumeLayout(false);
 			viewLayoutPanel.ResumeLayout(false);
 			searchLayoutPanel.ResumeLayout(false);
@@ -461,24 +489,29 @@
 			((System.ComponentModel.ISupportInitialize)dataView).EndInit();
 			tableLayoutPanel1.ResumeLayout(false);
 			tableLayoutPanel1.PerformLayout();
-			tabPage2.ResumeLayout(false);
-			configLayoutPanel.ResumeLayout(false);
-			tableLayoutPanel3.ResumeLayout(false);
-			tableLayoutPanel3.PerformLayout();
+			tabControl1.ResumeLayout(false);
 			ResumeLayout(false);
 		}
 
+		private void TabControl1_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			
+		}
 
-		#endregion
-
-		private TabControl tabControl1;
+#endregion
+		private BindingSource catFoodBindingSource;
+		private TabPage tabPage3;
+		private TableLayoutPanel configLayoutPanel;
+		private TableLayoutPanel tableLayoutPanel3;
+		private Button savePicConfigBtn;
+		private TextBox picConfigText;
 		private TabPage tabPage1;
-		private TabPage tabPage2;
 		private TableLayoutPanel viewLayoutPanel;
 		private TableLayoutPanel searchLayoutPanel;
 		private Label searchLabel;
 		private TextBox searchText;
 		private Button searchBtn;
+		private Button syncBtn;
 		private DataGridView dataView;
 		private TableLayoutPanel tableLayoutPanel1;
 		private Label totalLabel;
@@ -492,10 +525,7 @@
 		private Button lastPageBtn;
 		private Button jumpBtn;
 		private TextBox jumpPageText;
-		private Button syncBtn;
-		private TableLayoutPanel configLayoutPanel;
-		private TableLayoutPanel tableLayoutPanel3;
-		private Button savePicConfigBtn;
-		private TextBox picConfigText;
+		private TabControl tabControl1;
+		private Button brandManagerBtn;
 	}
 }

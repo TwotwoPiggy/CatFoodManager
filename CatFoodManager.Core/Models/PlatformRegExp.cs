@@ -27,7 +27,6 @@ namespace CatFoodManager.Core.Models
 			if (isReadAction)
 			{
 				SetFieldInfoList();
-
 			}
 			else
 			{

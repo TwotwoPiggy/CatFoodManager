@@ -26,9 +26,12 @@ namespace CatFoodManager.Core.Models
 
 		public string PicturePath { get; set; }
 
+		public DateTime ProductionDate { get; set; }
+
 		public DateTime PurchasedAt { get; set; }
 
 		public DateTime UpdatedAt { get; set; }
+
 
 		public int FeededCount { get; set; }
 
@@ -46,9 +49,12 @@ namespace CatFoodManager.Core.Models
 		}
 
 		[ForeignKey(typeof(Brand))]
-		public int BrandId { get; set; }
+		public long BrandId { get; set; }
 		[ManyToOne]
 		public Brand Brand { get; set; }
+		
+		[Ignore]
+		public string BrandName => Brand?.Name;
 
 		[ForeignKey(typeof(Factory))]
 		public int FactoryId { get; set; }

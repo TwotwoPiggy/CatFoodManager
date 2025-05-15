@@ -6,7 +6,7 @@ namespace CatFoodManager.Core.Services
 {
 	public class CatFoodService : GenericServiceBase<CatFood>, IService<CatFood>
 	{
-        public CatFoodService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
+		public CatFoodService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
 		public void Save(CatFood catFood)
 		{
 			_repo.Add(catFood);
@@ -17,19 +17,19 @@ namespace CatFoodManager.Core.Services
 			_repo.BatchAdd(catFoods);
 		}
 
-		public CatFood Query(long id)
+		public CatFood? Query(long id)
 		{
-			return _repo.Query<CatFood>(catFood => catFood.Id == id);
+			return _repo.Query<CatFood>(catFood => catFood.Id == id, true);
 		}
 
-		public CatFood Query(string catFoodName)
+		public CatFood? Query(string catFoodName)
 		{
-			return _repo.Query<CatFood>(catFood => catFood.Name == catFoodName);
+			return _repo.Query<CatFood>(catFood => catFood.Name == catFoodName, true);
 		}
 
 		public IEnumerable<CatFood> GetAll()
 		{
-			return _repo.QueryList<CatFood>();
+			return _repo.QueryList<CatFood>(loadChildren: true);
 		}
 
 		public (IEnumerable<CatFood>, int) GetAllWithCount()
@@ -40,12 +40,12 @@ namespace CatFoodManager.Core.Services
 
 		public IEnumerable<CatFood> FuzzyQuery(string queryString)
 		{
-			return _repo.FuzzyQuery<CatFood>(queryString);
+			return _repo.FuzzyQuery<CatFood>(queryString, true);
 		}
 
 		public (IEnumerable<CatFood>, int) FuzzyQueryWithCount(string queryString)
 		{
-			var list = _repo.FuzzyQuery<CatFood>(queryString);
+			var list = _repo.FuzzyQuery<CatFood>(queryString, true);
 			return (list, list.Count());
 		}
 

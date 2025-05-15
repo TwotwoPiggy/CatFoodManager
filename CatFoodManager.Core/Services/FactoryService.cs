@@ -17,12 +17,12 @@ namespace CatFoodManager.Core.Services
 			_repo.BatchAdd(factories);
 		}
 
-		public Factory Query(long id)
+		public Factory? Query(long id)
 		{
 			return _repo.Query<Factory>(factory => factory.Id == id);
 		}
 
-		public Factory Query(string factoryName)
+		public Factory? Query(string factoryName)
 		{
 			return _repo.Query<Factory>(factory => factory.Name == factoryName);
 		}

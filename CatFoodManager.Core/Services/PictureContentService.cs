@@ -91,7 +91,16 @@ namespace CatFoodManager.Core.Services
 			catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
 			catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;
 			catFood.PurchasedAt = DateTime.TryParse(groups[fieldInfos["purchasedAt"]].Value, out DateTime purchasedAt) ? purchasedAt : DateTime.Now;
-			var shopName = groups[fieldInfos["shopName"]].Value;
+			var shopName = groups[fieldInfos["shopName"]].Value
+														.Replace("店",string.Empty)
+														.Replace("旗舰", string.Empty)
+														.Replace("京东", string.Empty)
+														.Replace("自营", string.Empty)
+														.Replace("官方", string.Empty)
+														.Replace("LEGENDSANDY", string.Empty)
+														.Replace("宠物", string.Empty)
+														.Replace("食品", string.Empty)
+														.Replace("海外", string.Empty);
 			return (catFood, shopName);
 		}
 

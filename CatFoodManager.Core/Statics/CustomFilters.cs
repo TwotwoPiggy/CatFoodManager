@@ -10,6 +10,6 @@ namespace CatFoodManager.Core.Statics
 	{
 		public static string[] PictureExtensions = { "png", "jpg" };
 
-		public static string[] ColumnsDisableToShow = { "BrandId", "Brand", "FactoryId", "Factory", "FoodType", "PicturePath" };
+		public static string[] ColumnsDisableToShow = { "BrandId", "FactoryId", "Factory", "FoodType", "PicturePath" };
 	}
 }

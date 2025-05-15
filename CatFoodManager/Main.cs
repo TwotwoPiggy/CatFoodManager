@@ -6,15 +6,15 @@ using CommonTools;
 using SQLiteNetExtensions.Attributes;
 using System.ComponentModel;
 using System.Data;
+using System.Windows.Forms;
 
 namespace CatFoodManager
 {
 	public partial class Main : Form
 	{
 		#region services
-
-		private readonly IService<Brand> _brandService;
 		private readonly IService<CatFood> _catFoodSerivce;
+		private readonly IService<Brand> _brandService;
 		private readonly IService<Factory> _factoryService;
 		private readonly IPlatformRegExpService _regExpService;
 		private readonly PictureContentService _pictureContentService;
@@ -48,6 +48,7 @@ namespace CatFoodManager
 		#region view
 		private BindingSource _bindingSource = [];
 		private PictureView _pictureView;
+		private BrandManager _brandManager;
 		#endregion
 
 		#region fields
@@ -72,8 +73,11 @@ namespace CatFoodManager
 		{
 			LoadConfigs();
 			InitComponents();
+			InitColumns();
 			LoadData();
 			pageSizeComboBox.SelectedIndexChanged += pageSizeComboBox_SelectedIndexChanged;
+			dataView.KeyDown += DataView_KeyDown;
+			dataView.Leave += DataView_Leave;
 		}
 
 		//todo: progress bar
@@ -110,6 +114,7 @@ namespace CatFoodManager
 						(catFood, shopName) = _pictureContentService.GenerateCatFood(content, regPattern.RegularExpression, regPattern.FieldInfoList, path);
 						brand = _brandService.Query(shopName);
 						catFood.Brand = brand;
+						catFood.BrandId = brand.Id;
 						catFoods.Add(catFood);
 					}
 				}
@@ -128,24 +133,61 @@ namespace CatFoodManager
 			}
 		}
 
+		private void brandManagerBtn_Click(object sender, EventArgs e)
+		{
+			_brandManager = _brandManager == null || _brandManager.IsDisposed ? new BrandManager(_brandService) : _brandManager;
+			_brandManager.Show();
+		}
+
 		#region search control
 		private void searchBtn_Click(object sender, EventArgs e)
 		{
 			var searchKey = searchText.Text;
 			if (string.IsNullOrWhiteSpace(searchKey))
 			{
+				LoadData();
 				return;
 			}
 			var properties = typeof(CatFood)
 									.GetProperties()
-									.Where(p=> !p.CustomAttributes.Any(a=> a.AttributeType.Name == "IgnoreAttribute" || a.AttributeType.BaseType?.Name == "RelationshipAttribute"))
-									.Select(p => $"OR {p.Name} LIKE '%{searchKey}%'");
-			var queryString = $"SELECT * FROM CatFood WHERE FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}' {String.Join(' ', properties)}";
+									.Where(p => !p.CustomAttributes.Any(a => a.AttributeType.Name == "IgnoreAttribute" || a.AttributeType.BaseType?.Name == "RelationshipAttribute"))
+									.Select(p => $"\r\nOR a.{p.Name} LIKE '%{searchKey}%'");
+			var queryStr = $"SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id";
+			var foodTypeQueryCondition = searchKey == "主食" || searchKey == "零食" ? $"\r\nOR a.FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}'" : string.Empty;
+			var queryString = $"{queryStr} WHERE b.Name like '%{searchKey}%' {String.Join(' ', properties)} {foodTypeQueryCondition}";
 			LoadData(queryString);
+		}
+
+
+		private void searchText_KeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Enter)
+			{
+				searchBtn_Click(sender, e);
+			}
+		}
+
+		private void searchText_TextChanged(object sender, EventArgs e)
+		{
+			searchBtn_Click(sender, e);
 		}
 		#endregion
 
 		#region Main View
+		private void DataView_Leave(object? sender, EventArgs e)
+		{
+			dataView.EndEdit();
+		}
+
+		private void DataView_KeyDown(object? sender, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Enter)
+			{
+				dataView.EndEdit();
+				e.Handled = true;
+			}
+		}
+
 		private void dataView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
 		{
 			var dataGridView = sender as DataGridView;
@@ -153,6 +195,10 @@ namespace CatFoodManager
 			{
 				var currentCell = dataGridView.CurrentCell;
 				var id = currentCell.OwningRow.Cells["Id"].Value;
+				if (id == null)
+				{
+					return;
+				}
 				var valueToUpdate = currentCell.EditedFormattedValue;
 				var catFood = _catFoodSerivce.Query((long)id);
 				if (catFood != null && valueToUpdate != null)
@@ -180,7 +226,17 @@ namespace CatFoodManager
 		{
 			if (dataView.IsCurrentCellDirty)
 			{
-				dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
+				if (sender is DataGridView)
+				{
+					foreach (DataGridViewCell cell in ((DataGridView)sender).SelectedCells)
+					{
+						if (cell.ColumnIndex == dataView.Columns["FoodTypeToShow"].Index)
+						{
+							dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
+						}
+					}
+				}
+				//dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
 			}
 		}
 
@@ -298,21 +354,47 @@ namespace CatFoodManager
 			_currentPage = 1;
 		}
 
+		private void InitColumns()
+		{
+			dataView.AutoGenerateColumns = false;
+
+			foreach (DataGridViewColumn column in ColumnHeaders.CatFoodHeaders.Values)
+			{
+				if (column == null)
+				{
+					continue;
+				}
+				column.Visible = !CustomFilters.ColumnsDisableToShow.Contains(column.Name);
+				column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+				column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+				if (column.Name == "FoodTypeToShow")
+				{
+					var comboBox = column as DataGridViewComboBoxColumn;
+					SetComboBoxWithEnums(comboBox);
+				}
+				if (column.Name == "PictureButton")
+				{
+					var button = column as DataGridViewButtonColumn;
+					SetButtonCellColumn(button);
+				}
+				dataView.Columns.Add(column);
+			}
+			dataView.CellClick += new DataGridViewCellEventHandler(DataView_CellClick);
+		}
+
 		private void SetLabels()
 		{
 			totalLabel.Text = $"共 {_totalCount} 条记录";
 			pageInfoLabel.Text = $"当前页 {_currentPage}/{_pageCount}";
 		}
 
-		private void LoadData(string filter = null)
+		private void LoadData(string? filter = null)
 		{
-			var isFirstLoad = _bindingSource == null;
+			//var isFirstLoad = _bindingSource == null;
 			(var catFoodResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _catFoodSerivce.GetAllWithCount() : _catFoodSerivce.FuzzyQueryWithCount(filter);
-			_bindingSource.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+			_bindingSource!.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
 			dataView.DataSource = _bindingSource;
 			_pageCount = Convert.ToInt32(Math.Ceiling((double)_totalCount / _pageSize));
-
-			SetColumns();
 			SetLabels();
 			ControlButtons();
 			Refresh();
@@ -327,37 +409,6 @@ namespace CatFoodManager
 		{
 			homeBtn.Enabled = prePageBtn.Enabled = _currentPage != 1;
 			lastPageBtn.Enabled = nextPageBtn.Enabled = _currentPage != _pageCount;
-		}
-
-		private void SetColumns()
-		{ 
-			var comboBoxColumn = CreateComboBoxWithEnums();
-			var buttonColumn = CreateButtonCellColumn();
-			foreach (DataGridViewColumn column in dataView.Columns)
-			{
-				column.Visible = !CustomFilters.ColumnsDisableToShow.Contains(column.HeaderText);
-				column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-				column.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue(column.HeaderText, out string? header) ? header : column.HeaderText;
-				column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-				column.ReadOnly = false;
-				if (column.Name == "FoodType")
-				{
-					comboBoxColumn.DisplayIndex = column.DisplayIndex;
-				}
-				if (column.Name == "PicturePath")
-				{
-					buttonColumn.DisplayIndex = column.DisplayIndex;
-				}
-			}
-			dataView.Columns.Add(comboBoxColumn);
-			dataView.Columns.Add(buttonColumn);
-			dataView.CellClick += new DataGridViewCellEventHandler(DataView_CellClick);
-
-		}
-		
-		private void SetColumn()
-		{
-
 		}
 
 		private void GetPicturesPath()
@@ -395,39 +446,26 @@ namespace CatFoodManager
 		}
 
 
-		private DataGridViewComboBoxColumn CreateComboBoxWithEnums()
+		private void SetComboBoxWithEnums(DataGridViewComboBoxColumn comboBox)
 		{
-			var comboBox = new DataGridViewComboBoxColumn();
-			comboBox.DataSource = Enum.GetValues(typeof(CatFoodType));
-			comboBox.DataPropertyName = "FoodType";
-
-			comboBox.Name = "FoodTypeToShow";
-			comboBox.Visible = !CustomFilters.ColumnsDisableToShow.Contains("FoodTypeToShow");
-			comboBox.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue("FoodTypeName", out string? header) ? header : comboBox.HeaderText;
 			comboBox.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 			comboBox.ReadOnly = false;
 			comboBox.Width = 70;
 			comboBox.Resizable = DataGridViewTriState.False;
 			comboBox.DropDownWidth = 200;
 			comboBox.MaxDropDownItems = 5;
-			return comboBox;
 		}
 
-		private DataGridViewButtonColumn CreateButtonCellColumn()
+		private void SetButtonCellColumn(DataGridViewButtonColumn buttonColumn)
 		{
-			var buttonColumn = new DataGridViewButtonColumn();
-			buttonColumn.Visible = !CustomFilters.ColumnsDisableToShow.Contains("PictureButton");
-			buttonColumn.HeaderText = ColumnHeaders.CatFoodHeaders.TryGetValue("PicturePath", out string? header) ? header : buttonColumn.HeaderText;
 			buttonColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 			buttonColumn.DefaultCellStyle.BackColor = Color.Gray;
 			buttonColumn.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
-			buttonColumn.Name = "PictureButton";
-			buttonColumn.Text = "查看照片";
 			buttonColumn.Width = 100;
 			buttonColumn.Resizable = DataGridViewTriState.False;
 			buttonColumn.UseColumnTextForButtonValue = true;
-			return buttonColumn;
 		}
+
 		#endregion
 
 	}
