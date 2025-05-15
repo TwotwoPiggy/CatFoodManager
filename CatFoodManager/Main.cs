@@ -53,6 +53,7 @@ namespace CatFoodManager
 
 		#region fields
 		private Dictionary<string, string[]?>? _pictureFolders;
+		private const string _baseQueryString = "SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id \r\nWHERE b.Name like";
 		#endregion
 
 		public Main(IService<CatFood> catFoodSerivce, IService<Brand> brandService, IService<Factory> factoryService,
@@ -149,12 +150,18 @@ namespace CatFoodManager
 				return;
 			}
 			var properties = typeof(CatFood)
-									.GetProperties()
-									.Where(p => !p.CustomAttributes.Any(a => a.AttributeType.Name == "IgnoreAttribute" || a.AttributeType.BaseType?.Name == "RelationshipAttribute"))
-									.Select(p => $"\r\nOR a.{p.Name} LIKE '%{searchKey}%'");
-			var queryStr = $"SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id";
-			var foodTypeQueryCondition = searchKey == "主食" || searchKey == "零食" ? $"\r\nOR a.FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}'" : string.Empty;
-			var queryString = $"{queryStr} WHERE b.Name like '%{searchKey}%' {String.Join(' ', properties)} {foodTypeQueryCondition}";
+								.GetProperties()
+								.Where(p => 
+										!p.CustomAttributes.Any(a => 
+																a.AttributeType.Name == "IgnoreAttribute" 
+																|| a.AttributeType.BaseType?.Name == "RelationshipAttribute")
+										)
+								.Select(p => $"\r\nOR a.{p.Name} LIKE '%{searchKey}%'");
+
+			var foodTypeQueryCondition = searchKey == "主食" || searchKey == "零食" 
+										? $"\r\nOR a.FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}'" 
+										: string.Empty;
+			var queryString = $"{_baseQueryString} '%{searchKey}%' {String.Join(' ', properties)} {foodTypeQueryCondition}";
 			LoadData(queryString);
 		}
 
