@@ -47,8 +47,8 @@ namespace CatFoodManager
 
 		#region view
 		private BindingSource _bindingSource = [];
-		private PictureView _pictureView;
-		private BrandManager _brandManager;
+		private PictureView? _pictureView;
+		private BrandManager? _brandManager;
 		#endregion
 
 		#region fields
@@ -84,6 +84,7 @@ namespace CatFoodManager
 		//todo: progress bar
 		private void syncBtn_Click(object sender, EventArgs e)
 		{
+			var filesNeedToArchive = new List<string>();
 			try
 			{
 				var regExps = _regExpService.GetAll();
@@ -92,7 +93,7 @@ namespace CatFoodManager
 				PlatformRegExp? regPattern;
 				var catFoods = new List<CatFood>();
 				CatFood catFood;
-				Brand brand;
+				Brand? brand;
 				string shopName;
 				if (_pictureFolders == null)
 				{
@@ -112,16 +113,19 @@ namespace CatFoodManager
 					foreach (var path in paths)
 					{
 						content = _pictureContentService.GetContentFromPicture(path, needReduceNoise: true);
-						(catFood, shopName) = _pictureContentService.GenerateCatFood(content, regPattern.RegularExpression, regPattern.FieldInfoList, path);
+						(catFood, shopName) = _pictureContentService.GenerateCatFood(content, regPattern.RegularExpression!, regPattern.FieldInfoList!, path);
 						brand = _brandService.Query(shopName);
-						catFood.Brand = brand;
-						catFood.BrandId = brand.Id;
+						catFood.Brand = brand!;
+						catFood.BrandId = brand!.Id;
 						catFoods.Add(catFood);
+						filesNeedToArchive.Add(path);
 					}
 				}
 				if (catFoods.Count != 0)
 				{
 					_catFoodSerivce.BatchSave(catFoods);
+					_pictureContentService.FileArchive(filesNeedToArchive);
+
 				}
 			}
 			catch (Exception ex)
@@ -151,15 +155,15 @@ namespace CatFoodManager
 			}
 			var properties = typeof(CatFood)
 								.GetProperties()
-								.Where(p => 
-										!p.CustomAttributes.Any(a => 
-																a.AttributeType.Name == "IgnoreAttribute" 
+								.Where(p =>
+										!p.CustomAttributes.Any(a =>
+																a.AttributeType.Name == "IgnoreAttribute"
 																|| a.AttributeType.BaseType?.Name == "RelationshipAttribute")
 										)
 								.Select(p => $"\r\nOR a.{p.Name} LIKE '%{searchKey}%'");
 
-			var foodTypeQueryCondition = searchKey == "主食" || searchKey == "零食" 
-										? $"\r\nOR a.FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}'" 
+			var foodTypeQueryCondition = searchKey == "主食" || searchKey == "零食"
+										? $"\r\nOR a.FoodType LIKE '{(int)searchKey.GetEnumFromDescription<CatFoodType>()}'"
 										: string.Empty;
 			var queryString = $"{_baseQueryString} '%{searchKey}%' {String.Join(' ', properties)} {foodTypeQueryCondition}";
 			LoadData(queryString);
@@ -177,6 +181,13 @@ namespace CatFoodManager
 		private void searchText_TextChanged(object sender, EventArgs e)
 		{
 			searchBtn_Click(sender, e);
+		}
+		#endregion
+
+		#region create control
+		private void createBtn_Click(object sender, EventArgs e)
+		{
+
 		}
 		#endregion
 
@@ -271,6 +282,11 @@ namespace CatFoodManager
 			LoadData();
 		}
 
+		private void pageSizeComboBox_SelectedValueChanged(object sender, EventArgs e)
+		{
+
+		}
+
 		private void homeBtn_Click(object sender, EventArgs e)
 		{
 			if (!homeBtn.Enabled)
@@ -332,6 +348,10 @@ namespace CatFoodManager
 		}
 
 
+		private void jumpPageText_TextChanged(object sender, EventArgs e)
+		{
+			jumpBtn_Click(sender, e);
+		}
 		#endregion
 
 		#region config control
@@ -442,7 +462,9 @@ namespace CatFoodManager
 														.GetFiles(directory)
 														.Where(p => CustomFilters
 																		.PictureExtensions
-																		.Contains(p.GetExtension().TrimStart('.').ToLower()))
+																		.Contains(p.GetExtension().TrimStart('.').ToLower())
+																	&& !FileManager.HasAttribute(p, FileAttributes.Archive)
+																)
 														.ToArray();
 										});
 			if (_pictureFolders?.Count == 0)
@@ -453,27 +475,26 @@ namespace CatFoodManager
 		}
 
 
-		private void SetComboBoxWithEnums(DataGridViewComboBoxColumn comboBox)
+		private void SetComboBoxWithEnums(DataGridViewComboBoxColumn? comboBox)
 		{
-			comboBox.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-			comboBox.ReadOnly = false;
-			comboBox.Width = 70;
-			comboBox.Resizable = DataGridViewTriState.False;
-			comboBox.DropDownWidth = 200;
-			comboBox.MaxDropDownItems = 5;
+			comboBox!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			comboBox!.ReadOnly = false;
+			comboBox!.Width = 70;
+			comboBox!.Resizable = DataGridViewTriState.False;
+			comboBox!.DropDownWidth = 200;
+			comboBox!.MaxDropDownItems = 5;
 		}
 
-		private void SetButtonCellColumn(DataGridViewButtonColumn buttonColumn)
+		private void SetButtonCellColumn(DataGridViewButtonColumn? buttonColumn)
 		{
-			buttonColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-			buttonColumn.DefaultCellStyle.BackColor = Color.Gray;
-			buttonColumn.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
-			buttonColumn.Width = 100;
-			buttonColumn.Resizable = DataGridViewTriState.False;
-			buttonColumn.UseColumnTextForButtonValue = true;
+			buttonColumn!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			buttonColumn!.DefaultCellStyle.BackColor = Color.Gray;
+			buttonColumn!.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
+			buttonColumn!.Width = 100;
+			buttonColumn!.Resizable = DataGridViewTriState.False;
+			buttonColumn!.UseColumnTextForButtonValue = true;
 		}
 
 		#endregion
-
 	}
 }

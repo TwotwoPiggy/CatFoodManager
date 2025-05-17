@@ -9,13 +9,13 @@ namespace CatFoodManager.Core.Models
 		[PrimaryKey, AutoIncrement]
 		public long Id { get; set; }
 
-		public string Name { get; set; }
+		public string? Name { get; set; }
 
 		public PlatformType Platform { get; set; }
 
-        public string RegularExpression { get; set; }
+        public string? RegularExpression { get; set; }
 
-		public string FieldInfos { get; set; }
+		public string? FieldInfos { get; set; }
 		[Ignore]
 		public Dictionary<string,int>? FieldInfoList { get; set; }
 

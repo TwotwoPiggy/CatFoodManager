@@ -46,6 +46,7 @@
 			searchBtn = new Button();
 			syncBtn = new Button();
 			brandManagerBtn = new Button();
+			createBtn = new Button();
 			dataView = new DataGridView();
 			tableLayoutPanel1 = new TableLayoutPanel();
 			totalLabel = new Label();
@@ -175,17 +176,19 @@
 			// 
 			// searchLayoutPanel
 			// 
-			searchLayoutPanel.ColumnCount = 5;
+			searchLayoutPanel.ColumnCount = 6;
 			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 69F));
 			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 93F));
 			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 63F));
-			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 561F));
-			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 21F));
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 492F));
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 63F));
+			searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
 			searchLayoutPanel.Controls.Add(searchLabel, 2, 0);
 			searchLayoutPanel.Controls.Add(searchText, 3, 0);
 			searchLayoutPanel.Controls.Add(searchBtn, 4, 0);
 			searchLayoutPanel.Controls.Add(syncBtn, 0, 0);
 			searchLayoutPanel.Controls.Add(brandManagerBtn, 1, 0);
+			searchLayoutPanel.Controls.Add(createBtn, 5, 0);
 			searchLayoutPanel.Dock = DockStyle.Fill;
 			searchLayoutPanel.Location = new Point(0, 0);
 			searchLayoutPanel.Margin = new Padding(0);
@@ -215,7 +218,7 @@
 			searchText.Location = new Point(226, 1);
 			searchText.Margin = new Padding(1);
 			searchText.Name = "searchText";
-			searchText.Size = new Size(559, 33);
+			searchText.Size = new Size(490, 33);
 			searchText.TabIndex = 1;
 			searchText.TextChanged += searchText_TextChanged;
 			searchText.KeyDown += searchText_KeyDown;
@@ -224,10 +227,10 @@
 			// 
 			searchBtn.Dock = DockStyle.Fill;
 			searchBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
-			searchBtn.Location = new Point(787, 1);
+			searchBtn.Location = new Point(718, 1);
 			searchBtn.Margin = new Padding(1);
 			searchBtn.Name = "searchBtn";
-			searchBtn.Size = new Size(52, 32);
+			searchBtn.Size = new Size(61, 32);
 			searchBtn.TabIndex = 2;
 			searchBtn.Text = "搜索";
 			searchBtn.UseVisualStyleBackColor = true;
@@ -256,6 +259,19 @@
 			brandManagerBtn.Text = "品牌管理";
 			brandManagerBtn.UseVisualStyleBackColor = true;
 			brandManagerBtn.Click += brandManagerBtn_Click;
+			// 
+			// createBtn
+			// 
+			createBtn.Dock = DockStyle.Left;
+			createBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
+			createBtn.Location = new Point(781, 1);
+			createBtn.Margin = new Padding(1);
+			createBtn.Name = "createBtn";
+			createBtn.Size = new Size(57, 32);
+			createBtn.TabIndex = 5;
+			createBtn.Text = "新建";
+			createBtn.UseVisualStyleBackColor = true;
+			createBtn.Click += createBtn_Click;
 			// 
 			// dataView
 			// 
@@ -455,6 +471,7 @@
 			jumpPageText.Name = "jumpPageText";
 			jumpPageText.Size = new Size(51, 26);
 			jumpPageText.TabIndex = 10;
+			jumpPageText.TextChanged += jumpPageText_TextChanged;
 			// 
 			// tabControl1
 			// 
@@ -527,5 +544,6 @@
 		private TextBox jumpPageText;
 		private TabControl tabControl1;
 		private Button brandManagerBtn;
+		private Button createBtn;
 	}
 }

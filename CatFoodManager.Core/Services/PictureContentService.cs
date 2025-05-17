@@ -80,6 +80,14 @@ namespace CatFoodManager.Core.Services
 			}
 		}
 
+		public void FileArchive(IEnumerable<string> filesNeedToArchive)
+		{
+			foreach (var filePath in filesNeedToArchive)
+			{
+				FileManager.AddAttribute(filePath, FileAttributes.Archive);
+			}
+		}
+
 		public (CatFood, string) GenerateCatFood(string content, string regPattern, Dictionary<string, int> fieldInfos, string picturePath)
 		{
 			var catFood = new CatFood() { PicturePath = picturePath, UpdatedAt = DateTime.Now };

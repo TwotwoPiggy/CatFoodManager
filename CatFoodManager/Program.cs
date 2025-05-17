@@ -12,7 +12,7 @@ namespace CatFoodManager
 {
 	internal static class Program
 	{
-		public static IServiceProvider ServiceProvider { get; set; }
+		public static IServiceProvider? ServiceProvider { get; set; }
 
 		/// <summary>
 		///  The main entry point for the application.
@@ -27,7 +27,7 @@ namespace CatFoodManager
 			ConfigureServices(needMigrate: true);
 
 
-			Application.Run(ServiceProvider.GetService<Main>());
+			Application.Run(ServiceProvider!.GetService<Main>()!);
 		}
 
 		private static void ConfigureServices(bool needMigrate)
@@ -50,7 +50,7 @@ namespace CatFoodManager
 
 		public static T? GetService<T>() where T : class
 		{
-			return (T?)ServiceProvider.GetService(typeof(T));
+			return (T?)ServiceProvider!.GetService(typeof(T));
 		}
 
 	}

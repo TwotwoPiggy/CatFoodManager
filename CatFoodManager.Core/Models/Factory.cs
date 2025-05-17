@@ -13,10 +13,10 @@ namespace CatFoodManager.Core.Models
 		[PrimaryKey, AutoIncrement]
 		public long Id { get; set; }
 
-		public string Name { get; set; }
+		public string? Name { get; set; }
 
 		[OneToMany(CascadeOperations = CascadeOperation.All)]
-		public IList<CatFood> CatFoods { get; set; }
+		public IList<CatFood>? CatFoods { get; set; }
 
 		//[ManyToMany(typeof(Brand), CascadeOperations = CascadeOperation.All)]
 		//public IEnumerable<Brand> Brands { get; set; }

@@ -12,9 +12,9 @@ namespace CatFoodManager
 {
 	public partial class PictureView : Form
 	{
-		private string _picturePath;
-		private Bitmap _bitmap;
-		public PictureView(string picturePath)
+		private string? _picturePath;
+		private Bitmap? _bitmap;
+		public PictureView(string? picturePath)
 		{
 			InitializeComponent();
 			_picturePath = picturePath;
@@ -31,7 +31,7 @@ namespace CatFoodManager
 			{
 				_bitmap.Dispose();
 			}
-			_bitmap = new Bitmap(_picturePath);
+			_bitmap = new Bitmap(_picturePath!);
 			pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
 			pictureBox.Image = _bitmap;
 		}

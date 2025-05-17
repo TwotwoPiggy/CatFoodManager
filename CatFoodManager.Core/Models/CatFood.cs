@@ -12,9 +12,9 @@ namespace CatFoodManager.Core.Models
 		[DataMember]
 		public long Id { get; set; }
 
-		public string OrderId { get; set; }
+		public string? OrderId { get; set; }
 
-		public string Name { get; set; }
+		public string? Name { get; set; }
 
 		public CatFoodType FoodType { get; set; }
 
@@ -24,7 +24,7 @@ namespace CatFoodManager.Core.Models
 
 		public int Weights { get; set; }
 
-		public string PicturePath { get; set; }
+		public string? PicturePath { get; set; }
 
 		public DateTime ProductionDate { get; set; }
 
@@ -51,15 +51,15 @@ namespace CatFoodManager.Core.Models
 		[ForeignKey(typeof(Brand))]
 		public long BrandId { get; set; }
 		[ManyToOne]
-		public Brand Brand { get; set; }
+		public Brand? Brand { get; set; }
 		
 		[Ignore]
-		public string BrandName => Brand?.Name;
+		public string? BrandName => Brand?.Name;
 
 		[ForeignKey(typeof(Factory))]
 		public int FactoryId { get; set; }
 		[ManyToOne]
-		public Factory Factory { get; set; }
+		public Factory? Factory { get; set; }
 	}
 
 }

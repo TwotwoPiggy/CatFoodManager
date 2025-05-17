@@ -16,11 +16,11 @@ namespace CatFoodManager.Core.Statics
 		public static Context Instance  => _instanceLazy.Value;
 
 
-		private static IEnumerable<PlatformRegExp> _platformRegExps;
-		public static IEnumerable<PlatformRegExp> PlatformRegExps => _platformRegExps;
+		private static IEnumerable<PlatformRegExp>? _platformRegExps;
+		public static IEnumerable<PlatformRegExp>? PlatformRegExps => _platformRegExps;
 
-		private static string _connectionString;
-		public static string ConnectionString => _connectionString;
+		private static string? _connectionString;
+		public static string? ConnectionString => _connectionString;
 		#endregion
 
 		#region properties method

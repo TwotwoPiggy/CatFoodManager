@@ -19,7 +19,6 @@ namespace CatFoodManager.Core.Repositories
 
 		public T? Query<T>(Expression<Func<T, bool>> predExpr, bool loadChildren = false, bool recursive = false) where T : new()
 		{
-			//=> loadChildren? _sqliteHelper.Db.GetWithChildren<T>(predExpr, recursive) : _sqliteHelper.Db.Table<T>().FirstOrDefault(predExpr);
 			if (loadChildren)
 			{
 				return _sqliteHelper.Db.GetAllWithChildren(predExpr, recursive: recursive)!.AsQueryable().FirstOrDefault(predExpr);
@@ -44,7 +43,6 @@ namespace CatFoodManager.Core.Repositories
 
 		public IEnumerable<T> FuzzyQuery<T>(string query, bool loadChilden = false, bool recursive = false) where T : new()
 		{
-			//=> _sqliteHelper.Db.Query<T>(query);
 			var queryResults = _sqliteHelper.Db.Query<T>(query);
 			if (loadChilden)
 			{
