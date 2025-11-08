@@ -4,16 +4,28 @@ using CatFoodManager.Core.Statics;
 
 namespace CatFoodManager.Core.Services
 {
-	public class PlatformRegExpService(IRepository repo, bool needMigrate) : GenericServiceBase<PlatformRegExp>(repo, needMigrate), IPlatformRegExpService
+	public class PlatformRegExpService : GenericServiceBase<PlatformRegExp>, IPlatformRegExpService
 	{
-		public void Save(PlatformRegExp platformRegExp)
+        public PlatformRegExpService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
+
+        public void Save(PlatformRegExp platformRegExp)
 		{
 			_repo.Add(platformRegExp);
 		}
 
-		public PlatformRegExp Query(int id)
+		public void BatchSave(IEnumerable<PlatformRegExp> platformRegExp)
+		{
+			_repo.BatchAdd(platformRegExp);
+		}
+
+		public PlatformRegExp? Query(long id)
 		{
 			return _repo.Query<PlatformRegExp>(platformRegExp => platformRegExp.Id == id);
+		}
+
+		public PlatformRegExp? Query(string platformName)
+		{
+			return _repo.Query<PlatformRegExp>(platformRegExp => platformRegExp.Name == platformName);
 		}
 
 		public IEnumerable<PlatformRegExp> GetRegExpByPlatform(PlatformType platformType)
@@ -26,9 +38,21 @@ namespace CatFoodManager.Core.Services
 			return _repo.QueryList<PlatformRegExp>();
 		}
 
+		public (IEnumerable<PlatformRegExp>, int) GetAllWithCount()
+		{
+			var list = GetAll();
+			return (list, list.Count());
+		}
+
 		public IEnumerable<PlatformRegExp> FuzzyQuery(string queryString)
 		{
 			return _repo.FuzzyQuery<PlatformRegExp>(queryString);
+		}
+
+		public (IEnumerable<PlatformRegExp>, int) FuzzyQueryWithCount(string queryString)
+		{
+			var list = _repo.FuzzyQuery<PlatformRegExp>(queryString);
+			return (list, list.Count());
 		}
 
 		public void Update(PlatformRegExp platformRegExp)

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -10,8 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lemon.UI.Controls" Version="1.0.2" />
+    <None Remove="App.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lemon.UI.Controls" Version="1.0.5" />
     <PackageReference Include="ReaLTaiizor" Version="3.8.0.7" />
+    <PackageReference Include="Twotwo.CommonTools" Version="1.0.7" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,9 +24,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="App.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="tessdata\chi_sim.traineddata">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

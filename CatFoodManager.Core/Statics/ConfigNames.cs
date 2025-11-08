@@ -6,12 +6,8 @@ using System.Threading.Tasks;
 
 namespace CatFoodManager.Core.Statics
 {
-	public enum PlatformType
+	public class ConfigNames
 	{
-		None = 0,
-		JD = 1,
-		Taobao = 2,
-		PDD = 3,
-		Douyin = 4
+		public static readonly string PictureFolders = "PictureFolders";
 	}
 }

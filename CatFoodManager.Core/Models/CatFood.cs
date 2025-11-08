@@ -1,6 +1,7 @@
 ﻿using CatFoodManager.Core.Statics;
 using SQLite;
 using SQLiteNetExtensions.Attributes;
+using System.Runtime.Serialization;
 
 
 namespace CatFoodManager.Core.Models
@@ -8,7 +9,10 @@ namespace CatFoodManager.Core.Models
 	public class CatFood
 	{
 		[PrimaryKey, AutoIncrement]
+		[DataMember]
 		public long Id { get; set; }
+
+		public string OrderId { get; set; }
 
 		public string Name { get; set; }
 
@@ -19,19 +23,43 @@ namespace CatFoodManager.Core.Models
 		public double Price { get; set; }
 
 		public int Weights { get; set; }
-		
-        public DateTime PurchasedAt { get; set; }
 
-        public bool Feeded { get; set; }
+		public string PicturePath { get; set; }
+
+		public DateTime ProductionDate { get; set; }
+
+		public DateTime PurchasedAt { get; set; }
+
+		public DateTime UpdatedAt { get; set; }
+
+
+		public int FeededCount { get; set; }
+
+		[Ignore]
+		public bool Feeded
+		{
+			get
+			{
+				return Count == FeededCount;
+			}
+			set
+			{
+				FeededCount = value ? Count : FeededCount;
+			}
+		}
 
 		[ForeignKey(typeof(Brand))]
-		public int BrandId { get; set; }
+		public long BrandId { get; set; }
 		[ManyToOne]
 		public Brand Brand { get; set; }
+		
+		[Ignore]
+		public string BrandName => Brand?.Name;
 
 		[ForeignKey(typeof(Factory))]
 		public int FactoryId { get; set; }
 		[ManyToOne]
 		public Factory Factory { get; set; }
 	}
+
 }

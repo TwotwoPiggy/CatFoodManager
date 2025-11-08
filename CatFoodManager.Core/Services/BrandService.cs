@@ -10,16 +10,27 @@ using System.Windows.Forms.Design;
 
 namespace CatFoodManager.Core.Services
 {
-	public class BrandService(IRepository repo, bool needMigrate) : GenericServiceBase<Brand>(repo, needMigrate), IService<Brand>
+	public class BrandService : GenericServiceBase<Brand>, IService<Brand>
 	{
+		public BrandService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
 		public void Save(Brand brand)
 		{
 			_repo.Add(brand);
 		}
 
-		public Brand Query(int id)
+		public void BatchSave(IEnumerable<Brand> brands)
+		{
+			_repo.BatchAdd(brands);
+		}
+
+		public Brand? Query(long id)
 		{
 			return _repo.Query<Brand>(brand => brand.Id == id);
+		}
+
+		public Brand? Query(string brandName)
+		{
+			return _repo.Query<Brand>(brand => brand.Name == brandName);
 		}
 
 		public IEnumerable<Brand> GetAll()
@@ -27,9 +38,21 @@ namespace CatFoodManager.Core.Services
 			return _repo.QueryList<Brand>();
 		}
 
+		public (IEnumerable<Brand>, int) GetAllWithCount()
+		{
+			var list = GetAll();
+			return (list, list.Count());
+		}
+
 		public IEnumerable<Brand> FuzzyQuery(string queryString)
 		{
 			return _repo.FuzzyQuery<Brand>(queryString);
+		}
+
+		public (IEnumerable<Brand>, int) FuzzyQueryWithCount(string queryString)
+		{
+			var list = _repo.FuzzyQuery<Brand>(queryString);
+			return (list, list.Count());
 		}
 
 		public void Update(Brand brand)
