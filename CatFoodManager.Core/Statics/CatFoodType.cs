@@ -4,12 +4,20 @@ using System.ComponentModel;
 namespace CatFoodManager.Core.Statics
 {
 	[TypeConverter(typeof(CustomEnumConverter))]
-	public enum CatFoodType
+	public enum ProductType
     {
-        [Description("主食")]
+        [Description("猫粮")]
         CatFood = 0,
 
 		[Description("零食")]
-		CatSnack = 1
+		CatSnack = 1,
+
+        [Description("主食罐头")]
+        CannedFood = 2,
+
+        [Description("主食冻干")]
+        FreezeDriedFood = 3
+
+
     }
 }

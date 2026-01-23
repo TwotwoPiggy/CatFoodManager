@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace CatFoodManager.Core.Repositories
 {
-    public abstract class RepositoryBase : IRepositoryBase
+    public abstract class RepositoryBase : IRepositoryBase, IDisposable
 	{
         protected readonly SQLiteHelper _sqliteHelper;
 		public RepositoryBase(SQLiteHelper sqliteHelper) => _sqliteHelper = sqliteHelper;

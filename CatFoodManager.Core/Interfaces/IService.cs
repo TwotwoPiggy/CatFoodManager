@@ -10,7 +10,7 @@
 		(IEnumerable<T>, int) GetAllWithCount();
 		IEnumerable<T> FuzzyQuery(string queryString);
 		(IEnumerable<T>, int) FuzzyQueryWithCount(string queryString);
-		void Update(T brand);
+		void Update(T entity);
 		void Delete(int id);
 	}
 }

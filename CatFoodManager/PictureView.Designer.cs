@@ -39,21 +39,21 @@
 			pictureLayoutPanel.ColumnCount = 1;
 			pictureLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 			pictureLayoutPanel.Controls.Add(pictureBox, 0, 0);
-			pictureLayoutPanel.Dock = DockStyle.Fill;
+			pictureLayoutPanel.Dock = DockStyle.None;
 			pictureLayoutPanel.Location = new Point(0, 0);
 			pictureLayoutPanel.Name = "pictureLayoutPanel";
-			pictureLayoutPanel.RowCount = 2;
-			pictureLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 619F));
-			pictureLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 8F));
-			pictureLayoutPanel.Size = new Size(318, 681);
+			pictureLayoutPanel.RowCount = 1;
+			pictureLayoutPanel.RowStyles.Clear();
+			pictureLayoutPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			pictureLayoutPanel.AutoSize = true;
 			pictureLayoutPanel.TabIndex = 0;
 			// 
 			// pictureBox
 			// 
-			pictureBox.Dock = DockStyle.Fill;
-			pictureBox.Location = new Point(3, 3);
+			pictureBox.Dock = DockStyle.None;
+			pictureBox.Location = new Point(0, 0);
 			pictureBox.Name = "pictureBox";
-			pictureBox.Size = new Size(312, 613);
+			pictureBox.Size = new Size(100, 100);
 			pictureBox.TabIndex = 0;
 			pictureBox.TabStop = false;
 			// 
@@ -61,7 +61,7 @@
 			// 
 			AutoScaleDimensions = new SizeF(7F, 17F);
 			AutoScaleMode = AutoScaleMode.Font;
-			ClientSize = new Size(318, 681);
+			ClientSize = new Size(300, 300);
 			Controls.Add(pictureLayoutPanel);
 			Name = "PictureView";
 			Text = "PictureView";

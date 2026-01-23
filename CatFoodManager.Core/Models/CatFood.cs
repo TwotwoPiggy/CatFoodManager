@@ -16,7 +16,7 @@ namespace CatFoodManager.Core.Models
 
 		public string Name { get; set; }
 
-		public CatFoodType FoodType { get; set; }
+		public ProductType FoodType { get; set; }
 
 		public int Count { get; set; }
 

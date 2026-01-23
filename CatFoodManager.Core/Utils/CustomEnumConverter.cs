@@ -13,7 +13,7 @@ namespace CatFoodManager.Core.Utils
 {
 	public class CustomEnumConverter : EnumConverter
 	{
-		public CustomEnumConverter() : base(typeof(CatFoodType))
+		public CustomEnumConverter() : base(typeof(ProductType))
 		{
 		}
 
@@ -22,16 +22,16 @@ namespace CatFoodManager.Core.Utils
 		{
 			if (value is string)
 			{
-				return (value as string).GetEnumFromDescription<CatFoodType>();
+				return (value as string).GetEnumFromDescription<ProductType>();
 			}
 			return base.ConvertFrom(context, culture, value);
 		}
 
 		public override object? ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
 		{
-			if (value is CatFoodType)
+			if (value is ProductType)
 			{
-				return ((CatFoodType)value).GetEnumDescription();
+				return ((ProductType)value).GetEnumDescription();
 			}
 			return base.ConvertTo(context, culture, value, destinationType);
 		}

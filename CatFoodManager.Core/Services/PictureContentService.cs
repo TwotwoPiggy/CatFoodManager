@@ -87,7 +87,7 @@ namespace CatFoodManager.Core.Services
 			var groups = regex.Match(content).Groups;
 			catFood.OrderId = groups[fieldInfos["orderId"]].Value;
 			catFood.Name = groups[fieldInfos["name"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
-			catFood.FoodType = catFood.Name.Contains("猫粮") || catFood.Name.Contains("主食") ? CatFoodType.CatFood : CatFoodType.CatSnack;
+			catFood.FoodType = catFood.Name.Contains("猫粮") || catFood.Name.Contains("主食") ? ProductType.CatFood : ProductType.CatSnack;
 			catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
 			catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;
 			catFood.PurchasedAt = DateTime.TryParse(groups[fieldInfos["purchasedAt"]].Value, out DateTime purchasedAt) ? purchasedAt : DateTime.Now;
