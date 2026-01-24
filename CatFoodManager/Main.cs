@@ -6,6 +6,7 @@ using CommonTools;
 using SQLiteNetExtensions.Attributes;
 using System.ComponentModel;
 using System.Data;
+using System.Text;
 using System.Windows.Forms;
 
 namespace CatFoodManager
@@ -25,22 +26,22 @@ namespace CatFoodManager
         #region Page
 
         /// <summary>
-        /// ×Ü¼ÇÂ¼Êı
+        /// æ€»è®°å½•æ•°
         /// </summary>
         private int _totalCount = 0;
 
         /// <summary>
-        /// ×ÜÒ³Êı
+        /// æ€»é¡µæ•°
         /// </summary>
         private int _pageCount = 0;
 
         /// <summary>
-        /// µ±Ç°Ò³Êı
+        /// å½“å‰é¡µæ•°
         /// </summary>
         private int _currentPage = 0;
 
         /// <summary>
-        /// Ò³Êı×î´ó¼ÇÂ¼
+        /// é¡µæ•°æœ€å¤§è®°å½•
         /// </summary>
         private int _pageSize => Int32.TryParse(pageSizeComboBox.SelectedItem?.ToString(), out int pageSize) ? pageSize : 10;
 
@@ -55,8 +56,15 @@ namespace CatFoodManager
 
         #region fields
         private Dictionary<string, string[]?>? _pictureFolders;
-        private const string _baseQueryString = "SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id \r\nWHERE b.Name like";
+        private const string _baseCatfoodQueryString = "SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id \r\nWHERE b.Name like";
+        private const string _baseBestPriceQueryString = "SELECT DISTINCT a.*\r\nFROM BestPrice a\r\nWHERE a.Name like";
         private bool IsLowestPrice => this.rbnLowestPrice.Checked;
+
+        private static readonly IEnumerable<string> _searchableProperties = typeof(CatFood)
+            .GetProperties()
+            .Where(p => !p.CustomAttributes.Any(a => a.AttributeType.Name == "IgnoreAttribute" || a.AttributeType.BaseType?.Name == "RelationshipAttribute"))
+            .Select(p => p.Name)
+            .ToList();
         #endregion
 
         public Main(IService<CatFood> catFoodSerivce, IService<Brand> brandService, IService<Factory> factoryService, IService<BestPrice> lowestPriceService,
@@ -145,26 +153,56 @@ namespace CatFoodManager
         #region search control
         private void searchBtn_Click(object sender, EventArgs e)
         {
-            var searchKey = searchText.Text;
-            if (string.IsNullOrWhiteSpace(searchKey))
+            var searchKey = searchText.Text?.Trim();
+            if (string.IsNullOrEmpty(searchKey))
             {
                 LoadData();
                 return;
             }
-            var properties = typeof(CatFood)
-                                .GetProperties()
-                                .Where(p =>
-                                        !p.CustomAttributes.Any(a =>
-                                                                a.AttributeType.Name == "IgnoreAttribute"
-                                                                || a.AttributeType.BaseType?.Name == "RelationshipAttribute")
-                                        )
-                                .Select(p => $"\r\nOR a.{p.Name} LIKE '%{searchKey}%'");
+            var sb = new StringBuilder(IsLowestPrice ? _baseBestPriceQueryString : _baseCatfoodQueryString);
+            var args = new List<object>();
 
-            var foodTypeQueryCondition = searchKey == "Ö÷Ê³" || searchKey == "ÁãÊ³"
-                                        ? $"\r\nOR a.Type LIKE '{(int)searchKey.GetEnumFromDescription<ProductType>()}'"
-                                        : string.Empty;
-            var queryString = $"{_baseQueryString} '%{searchKey}%' {String.Join(' ', properties)} {foodTypeQueryCondition}";
-            LoadData(queryString);
+            // First condition: WHERE b.Name like ?
+            sb.Append(" ?");
+            args.Add($"%{searchKey}%");
+            // Handle specific keywords for ProductType
+            if (searchKey == "çŒ«ç²®" || searchKey == "é›¶é£Ÿ" || searchKey == "ä¸»é£Ÿ" || searchKey == "ç½å¤´" || searchKey == "å†»å¹²")
+            {
+                try
+                {
+                    if (searchKey == "ä¸»é£Ÿ")
+                    {
+                        sb.Append($" OR a.{(IsLowestPrice ? "Type" : "FoodType")} in (2, 3)");
+                    }
+                    else
+                    {
+                        if (searchKey == "ç½å¤´" || searchKey == "å†»å¹²")
+                        {
+                            searchKey = $"ä¸»é£Ÿ{searchKey}";
+                        }
+                        var enumVal = searchKey.GetEnumFromDescription<ProductType>();
+                        sb.Append($" OR a.{(IsLowestPrice ? "Type" : "FoodType")} = ?");
+                        args.Add((int)enumVal);
+                    }
+                    
+                }
+                catch { }
+            }
+
+
+            if (!IsLowestPrice)
+            {
+                sb.Append(" OR a.Id LIKE ?");
+                args.Add($"%{searchKey}%");
+            }
+            //foreach (var prop in _searchableProperties)
+            //{
+            //    sb.Append($" OR a.{prop} LIKE ?");
+            //    args.Add($"%{searchKey}%");
+            //}
+
+
+            LoadData(sb.ToString(), args.ToArray());
         }
 
 
@@ -247,7 +285,7 @@ namespace CatFoodManager
                     }
                 }
 
-                MessageBox.Show("ÒÑ¸üĞÂ!", "²Ù×÷³É¹¦", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("å·²æ›´æ–°!", "æ“ä½œæˆåŠŸ", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -268,7 +306,7 @@ namespace CatFoodManager
                         {
                             dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
                         }
-                        //todo: ÓÅ»¯
+                        //todo: ï¿½Å»ï¿½
                         if (cell.ColumnIndex == dataView.Columns["HasPurchased"]?.Index)
                         {
                             dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
@@ -364,15 +402,15 @@ namespace CatFoodManager
             #region validation
             if (!Int32.TryParse(jumpPageText.Text, out int gotoPage))
             {
-                MessageBox.Show("´ıÌø×ªµÄÒ³Êı²»ºÏ¹æ, Çë¼ì²é!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("å¾…è·³è½¬çš„é¡µæ•°ä¸åˆè§„, è¯·æ£€æŸ¥!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             if (gotoPage <= 0)
             {
-                MessageBox.Show("´ıÌø×ªµÄÒ³Êı³¬³öµ±Ç°Ö§³ÖµÄ×îĞ¡Ò³Êı, Çë¼ì²é!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("å¾…è·³è½¬çš„é¡µæ•°è¶…å‡ºå½“å‰æ”¯æŒçš„æœ€å°é¡µæ•°, è¯·æ£€æŸ¥!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             if (gotoPage > _pageCount)
             {
-                MessageBox.Show("´ıÌø×ªµÄÒ³Êı³¬³öµ±Ç°Ö§³ÖµÄ×î´óÒ³Êı, Çë¼ì²é!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("å¾…è·³è½¬çš„é¡µæ•°è¶…å‡ºå½“å‰æ”¯æŒçš„æœ€å¤§é¡µæ•°, è¯·æ£€æŸ¥!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             #endregion
             _currentPage = gotoPage;
@@ -414,8 +452,8 @@ namespace CatFoodManager
         {
             dataView.Columns.Clear();
             dataView.AutoGenerateColumns = false;
-			// When in lowest price mode, make columns fill the available grid width
-			dataView.AutoSizeColumnsMode = IsLowestPrice ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.None;
+            // When in lowest price mode, make columns fill the available grid width
+            dataView.AutoSizeColumnsMode = IsLowestPrice ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.None;
             var headersToShow = IsLowestPrice ? ColumnHeaders.BestPriceHeaders : ColumnHeaders.CatFoodHeaders;
             foreach (DataGridViewColumn column in headersToShow.Values)
             {
@@ -449,23 +487,24 @@ namespace CatFoodManager
 
         private void SetLabels()
         {
-            totalLabel.Text = $"¹² {_totalCount} Ìõ¼ÇÂ¼";
-            pageInfoLabel.Text = $"µ±Ç°Ò³ {_currentPage}/{_pageCount}";
+            totalLabel.Text = $"å…± {_totalCount} æ¡è®°å½•";
+            pageInfoLabel.Text = $"å½“å‰é¡µ {_currentPage}/{_pageCount}";
         }
 
-        private void LoadData(string? filter = null)
+        private void LoadData(string? filter = null, params object[] args)
         {
+            var queryArgs = args ?? Array.Empty<object>();
             if (IsLowestPrice)
             {
-                (var lowestPriceResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _lowestPriceService.GetAllWithCount() : _lowestPriceService.FuzzyQueryWithCount(filter);
+                (var lowestPriceResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _lowestPriceService.GetAllWithCount() : _lowestPriceService.FuzzyQueryWithCount(filter, queryArgs);
                 _bindingSource!.DataSource = lowestPriceResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
             }
             else
             {
-                (var catFoodResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _catFoodSerivce.GetAllWithCount() : _catFoodSerivce.FuzzyQueryWithCount(filter);
+                (var catFoodResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _catFoodSerivce.GetAllWithCount() : _catFoodSerivce.FuzzyQueryWithCount(filter, queryArgs);
                 _bindingSource!.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
             }
-            
+
             dataView.DataSource = _bindingSource;
             _pageCount = Convert.ToInt32(Math.Ceiling((double)_totalCount / _pageSize));
             SetLabels();
@@ -489,7 +528,7 @@ namespace CatFoodManager
             var directories = ConfigManager.GetAppConfig(ConfigNames.PictureFolders);
             if (string.IsNullOrWhiteSpace(directories))
             {
-                MessageBox.Show($"ÕÕÆ¬Â·¾¶ÅäÖÃ:{directories}ÎŞĞ§»òÕß²»´æÔÚ, Çë¼ì²é!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"ç…§ç‰‡è·¯å¾„é…ç½®:{directories}æ— æ•ˆæˆ–è€…ä¸å­˜åœ¨, è¯·æ£€æŸ¥!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             _pictureFolders = directories.TrimEnd(';')
@@ -513,7 +552,7 @@ namespace CatFoodManager
                                         });
             if (_pictureFolders?.Count == 0)
             {
-                var message = $"ÕÕÆ¬Â·¾¶ÅäÖÃ:{directories}ÎŞĞ§»òÕß²»´æÔÚ, Çë¼ì²é!";
+                var message = $"ç…§ç‰‡è·¯å¾„é…ç½®:{directories}æ— æ•ˆæˆ–è€…ä¸å­˜åœ¨, è¯·æ£€æŸ¥!";
                 throw new ArgumentException(message);
             }
         }
@@ -551,7 +590,7 @@ namespace CatFoodManager
             string shopName;
             if (_pictureFolders == null)
             {
-                MessageBox.Show("Í¼Æ¬Â·¾¶ÅäÖÃÎª¿Õ, Çë¼ì²é", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("å›¾ç‰‡è·¯å¾„é…ç½®ä¸ºç©º, è¯·æ£€æŸ¥", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             foreach (var kv in _pictureFolders)

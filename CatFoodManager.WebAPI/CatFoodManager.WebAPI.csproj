@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>bcc69be0-5c78-47f6-9044-9752c77242d2</UserSecretsId>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+    <Configurations>Debug;Release;PROD</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

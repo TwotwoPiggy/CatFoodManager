@@ -44,14 +44,14 @@ namespace CatFoodManager.Core.Services
 			return (list, list.Count());
 		}
 
-		public IEnumerable<PlatformRegExp> FuzzyQuery(string queryString)
+		public IEnumerable<PlatformRegExp> FuzzyQuery(string queryString, params object[] args)
 		{
-			return _repo.FuzzyQuery<PlatformRegExp>(queryString);
+			return _repo.FuzzyQueryWithChildren<PlatformRegExp>(queryString, false, false, args);
 		}
 
-		public (IEnumerable<PlatformRegExp>, int) FuzzyQueryWithCount(string queryString)
+		public (IEnumerable<PlatformRegExp>, int) FuzzyQueryWithCount(string queryString, params object[] args)
 		{
-			var list = _repo.FuzzyQuery<PlatformRegExp>(queryString);
+			var list = _repo.FuzzyQueryWithChildren<PlatformRegExp>(queryString, false, false, args);
 			return (list, list.Count());
 		}
 
