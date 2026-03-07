@@ -37,14 +37,16 @@ namespace CatFoodManager
         private void btnSave_Click(object sender, EventArgs e)
         {
             //todo: create a new LowestPrice and save it to the database
+            var type = this.cbType.SelectedIndex < 0 ? ProductType.Others : (ProductType)this.cbType.SelectedIndex;
             BestPrice bestPrice = new()
             {
                 Name = this.rtbName.Text,
-                Type = (ProductType)this.cbType.SelectedIndex,
+                Type = type,
                 LowestPrice = decimal.Parse(this.txtLowestPrice.Text),
                 FinalPrice = string.IsNullOrWhiteSpace(this.txtFinalPrice.Text) ? default : decimal.Parse(this.txtFinalPrice.Text),
                 PurchasedAt = string.IsNullOrWhiteSpace(this.PurchasedAt.Text) ? default : DateTime.Parse(this.PurchasedAt.Text),
-                PicturePath = this.PicSelector.Text
+                PicturePath = this.PicSelector.Text,
+                Platform = (PlatformType)this.cbPlatform.SelectedIndex,
             };
             //todo: when this.txtFinalPrice.Text changed, set rbtPurchased.Checked
             bestPrice.HasPurchased = bestPrice.FinalPrice.HasValue && this.rbtPurchased.Checked;

@@ -48,6 +48,7 @@
             brandManagerBtn = new Button();
             rbnLowestPrice = new RadioButton();
             rtbInventory = new RadioButton();
+            btnReset = new Button();
             dataView = new DataGridView();
             tableLayoutPanel1 = new TableLayoutPanel();
             totalLabel = new Label();
@@ -62,6 +63,7 @@
             jumpBtn = new Button();
             jumpPageText = new TextBox();
             tabControl1 = new TabControl();
+            openFileDialog = new OpenFileDialog();
             ((System.ComponentModel.ISupportInitialize)catFoodBindingSource).BeginInit();
             ConfigManagement.SuspendLayout();
             configLayoutPanel.SuspendLayout();
@@ -173,14 +175,15 @@
             // 
             // searchLayoutPanel
             // 
-            searchLayoutPanel.ColumnCount = 7;
+            searchLayoutPanel.ColumnCount = 8;
             searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
             searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 73F));
             searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 61F));
             searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 91F));
             searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 53F));
-            searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 425F));
-            searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 8F));
+            searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 378F));
+            searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 59F));
+            searchLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
             searchLayoutPanel.Controls.Add(searchLabel, 4, 0);
             searchLayoutPanel.Controls.Add(searchText, 5, 0);
             searchLayoutPanel.Controls.Add(searchBtn, 6, 0);
@@ -188,6 +191,7 @@
             searchLayoutPanel.Controls.Add(brandManagerBtn, 3, 0);
             searchLayoutPanel.Controls.Add(rbnLowestPrice, 0, 0);
             searchLayoutPanel.Controls.Add(rtbInventory, 1, 0);
+            searchLayoutPanel.Controls.Add(btnReset, 7, 0);
             searchLayoutPanel.Dock = DockStyle.Fill;
             searchLayoutPanel.Location = new Point(0, 0);
             searchLayoutPanel.Margin = new Padding(0);
@@ -217,7 +221,7 @@
             searchText.Location = new Point(349, 1);
             searchText.Margin = new Padding(1);
             searchText.Name = "searchText";
-            searchText.Size = new Size(423, 33);
+            searchText.Size = new Size(376, 33);
             searchText.TabIndex = 1;
             searchText.TextChanged += searchText_TextChanged;
             searchText.KeyDown += searchText_KeyDown;
@@ -226,10 +230,10 @@
             // 
             searchBtn.Dock = DockStyle.Fill;
             searchBtn.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
-            searchBtn.Location = new Point(774, 1);
+            searchBtn.Location = new Point(727, 1);
             searchBtn.Margin = new Padding(1);
             searchBtn.Name = "searchBtn";
-            searchBtn.Size = new Size(65, 32);
+            searchBtn.Size = new Size(57, 32);
             searchBtn.TabIndex = 2;
             searchBtn.Text = "搜索";
             searchBtn.UseVisualStyleBackColor = true;
@@ -287,6 +291,19 @@
             rtbInventory.Text = "库存";
             rtbInventory.UseVisualStyleBackColor = true;
             rtbInventory.CheckedChanged += rtbInventory_CheckedChanged;
+            // 
+            // btnReset
+            // 
+            btnReset.Dock = DockStyle.Fill;
+            btnReset.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+            btnReset.Location = new Point(786, 1);
+            btnReset.Margin = new Padding(1);
+            btnReset.Name = "btnReset";
+            btnReset.Size = new Size(53, 32);
+            btnReset.TabIndex = 7;
+            btnReset.Text = "Reset";
+            btnReset.UseVisualStyleBackColor = true;
+            btnReset.Click += btnReset_Click;
             // 
             // dataView
             // 
@@ -498,6 +515,10 @@
             tabControl1.Size = new Size(850, 464);
             tabControl1.TabIndex = 0;
             // 
+            // openFileDialog
+            // 
+            openFileDialog.FileName = "openFileDialog1";
+            // 
             // Main
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
@@ -560,5 +581,7 @@
         private TabControl tabControl1;
         private RadioButton rbnLowestPrice;
         private RadioButton rtbInventory;
+        private Button btnReset;
+        private OpenFileDialog openFileDialog;
     }
 }

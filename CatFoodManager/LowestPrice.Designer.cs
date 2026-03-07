@@ -329,8 +329,6 @@ namespace CatFoodManager
             // 
             // PicSelector
             // 
-            PicSelector.ButtonSize = new Size(78, 30);
-            PicSelector.ButtonText = "选择文件";
             PicSelector.Dock = DockStyle.Fill;
             PicSelector.Location = new Point(2, 3);
             PicSelector.Margin = new Padding(2, 3, 2, 3);

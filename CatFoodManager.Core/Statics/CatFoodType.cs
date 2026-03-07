@@ -16,7 +16,10 @@ namespace CatFoodManager.Core.Statics
         CannedFood = 2,
 
         [Description("主食冻干")]
-        FreezeDriedFood = 3
+        FreezeDriedFood = 3,
+
+        [Description("其他")]
+        Others = 4
 
 
     }
