@@ -6,17 +6,11 @@ using System.Runtime.Serialization;
 
 namespace CatFoodManager.Core.Models
 {
-	public class CatFood
-	{
-		[PrimaryKey, AutoIncrement]
-		[DataMember]
-		public long Id { get; set; }
-
+	public class CatFood : BaseEntity
+    {
 		public string OrderId { get; set; }
 
-		public string Name { get; set; }
-
-		public CatFoodType FoodType { get; set; }
+		public ProductType FoodType { get; set; }
 
 		public int Count { get; set; }
 
@@ -27,11 +21,6 @@ namespace CatFoodManager.Core.Models
 		public string PicturePath { get; set; }
 
 		public DateTime ProductionDate { get; set; }
-
-		public DateTime PurchasedAt { get; set; }
-
-		public DateTime UpdatedAt { get; set; }
-
 
 		public int FeededCount { get; set; }
 

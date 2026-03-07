@@ -8,9 +8,9 @@
 		T? Query(string name);
 		IEnumerable<T> GetAll();
 		(IEnumerable<T>, int) GetAllWithCount();
-		IEnumerable<T> FuzzyQuery(string queryString);
-		(IEnumerable<T>, int) FuzzyQueryWithCount(string queryString);
-		void Update(T brand);
+		IEnumerable<T> FuzzyQuery(string queryString, params object[] args);
+		(IEnumerable<T>, int) FuzzyQueryWithCount(string queryString, params object[] args);
+		void Update(T entity);
 		void Delete(int id);
 	}
 }

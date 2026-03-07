@@ -1,0 +1,6 @@
+@CatFoodManager.WebAPI_HostAddress = http://localhost:5195
+
+GET {{CatFoodManager.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
