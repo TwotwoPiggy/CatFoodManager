@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -51,8 +51,10 @@ namespace CatFoodManager.Core.Statics
             { "HasPurchased", new DataGridViewCheckBoxColumn() { DataPropertyName = "HasPurchased", HeaderText = "已购买", Name = "HasPurchased" , DisplayIndex = 60 , AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill} },
             { "PicturePath", new DataGridViewTextBoxColumn() { DataPropertyName = "PicturePath", HeaderText = "照片", Name = "PicturePath" , AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill} },
             { "PictureButton" , new DataGridViewButtonColumn(){ HeaderText = "照片", Name = "PictureButton", Text = "查看照片", DisplayIndex = 70 , AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill } },
-            { "PurchasedAt", new DataGridViewTextBoxColumn() { DataPropertyName = "PurchasedAt", HeaderText = "购买时间", Name = "PurchasedAt", DisplayIndex = 80, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, DefaultCellStyle = new DataGridViewCellStyle { Format = "yyyy-MM-dd" } } }
-            //{ "UpdatedAt", new DataGridViewTextBoxColumn() { DataPropertyName = "UpdatedAt", HeaderText = "更新时间", Name = "UpdatedAt", DisplayIndex = 140 } },
+            { "PurchasedAt", new DataGridViewTextBoxColumn() { DataPropertyName = "PurchasedAt", HeaderText = "购买时间", Name = "PurchasedAt", DisplayIndex = 80, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, DefaultCellStyle = new DataGridViewCellStyle { Format = "yyyy-MM-dd" } } },
+            { "FactoryName", new DataGridViewTextBoxColumn() { DataPropertyName = "FactoryName", HeaderText = "代工厂名称", Name = "FactoryName", DisplayIndex = 90, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill } },
+            { "HasTestReport", new DataGridViewCheckBoxColumn() { DataPropertyName = "HasTestReport", HeaderText = "有检测报告", Name = "HasTestReport", DisplayIndex = 100, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill } },
+            { "IsWorthRepurchasing", new DataGridViewCheckBoxColumn() { DataPropertyName = "IsWorthRepurchasing", HeaderText = "值得回购", Name = "IsWorthRepurchasing", DisplayIndex = 110, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill } }
         };
         public static readonly Dictionary<string, DataGridViewColumn> BestPriceHeaders = _bestPriceHeaders;
     }

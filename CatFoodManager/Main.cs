@@ -1,15 +1,19 @@
 using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
+using CatFoodManager.Core.Models.Dtos;
 using CatFoodManager.Core.Services;
 using CatFoodManager.Core.Statics;
 using CommonTools;
 using Lemon.UI.Controls;
+using Newtonsoft.Json;
 using SQLiteNetExtensions.Attributes;
 using SQLitePCL;
 using System.ComponentModel;
 using System.Data;
 using System.Text;
 using System.Windows.Forms;
+using Twotwo.Agent.Constants;
+using Twotwo.Agent.Services;
 
 namespace CatFoodManager
 {
@@ -22,6 +26,7 @@ namespace CatFoodManager
         private readonly IService<BestPrice> _lowestPriceService;
         private readonly IPlatformRegExpService _regExpService;
         private readonly PictureContentService _pictureContentService;
+        private readonly IGeminiOcrService _geminiOcrService;
         #endregion
 
         #region Page
@@ -72,7 +77,7 @@ namespace CatFoodManager
 
         public Main(IService<CatFood> catFoodSerivce, IService<Brand> brandService, IService<Factory> factoryService, IService<BestPrice> lowestPriceService,
                     IPlatformRegExpService regExpService, PictureContentService pictureContentService,
-                    BrandManager brandManager, LowestPrice lowestPrice)
+                    BrandManager brandManager, LowestPrice lowestPrice, IGeminiOcrService geminiOcrService)
         {
             InitializeComponent();
             _catFoodSerivce = catFoodSerivce;
@@ -84,6 +89,7 @@ namespace CatFoodManager
             _pictureFolders = [];
             _brandManager = brandManager;
             _lowestPrice = lowestPrice;
+            _geminiOcrService = geminiOcrService;
             InitializeContext();
         }
 
@@ -101,7 +107,7 @@ namespace CatFoodManager
         }
 
         //todo: create BestPrice & progress bar
-        private void btnFunction_Click(object sender, EventArgs e)
+        private async void btnFunction_Click(object sender, EventArgs e)
         {
             try
             {
@@ -112,7 +118,7 @@ namespace CatFoodManager
                 }
                 else
                 {
-                    Sync();
+                    await Sync();
                 }
             }
             catch (Exception ex)
@@ -295,7 +301,9 @@ namespace CatFoodManager
                     dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
                     continue;
                 }
-                if (cell.ColumnIndex == dataView.Columns["HasPurchased"]?.Index)
+                if (cell.ColumnIndex == dataView.Columns["HasPurchased"]?.Index ||
+                    cell.ColumnIndex == dataView.Columns["HasTestReport"]?.Index ||
+                    cell.ColumnIndex == dataView.Columns["IsWorthRepurchasing"]?.Index)
                 {
                     dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
                     if (!IsLowestPrice) return;
@@ -304,15 +312,16 @@ namespace CatFoodManager
                     if (id == null) return;
                     var bestPrice = _lowestPriceService.Query((long)id);
                     var valueToUpdate = currentCell?.EditedFormattedValue;
-                    if (bestPrice != null && valueToUpdate != null)
+                    var fieldName = currentCell?.OwningColumn?.Name;
+                    if (bestPrice != null && valueToUpdate != null && fieldName != null)
                     {
-                        var fieldName = currentCell?.OwningColumn?.Name;
-                        bestPrice.HasPurchased = (bool)valueToUpdate;
+                        var propertyToUpdate = bestPrice.GetType().GetProperty(fieldName);
+                        propertyToUpdate?.SetValue(bestPrice, (bool)valueToUpdate);
+                        bestPrice.UpdatedAt = DateTime.Now;
                         _lowestPriceService.Update(bestPrice);
                     }
                 }
             }
-            //dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
         }
 
 
@@ -519,12 +528,10 @@ namespace CatFoodManager
                 return;
             }
             _pictureFolders = directories.TrimEnd(';').Split(';')
-                                        ?.ToDictionary(d =>
+                                        .Where(d => !string.IsNullOrWhiteSpace(d))
+                                        .ToDictionary(d => Path.GetFileName(d.Trim()), d =>
                                         {
-                                            return d.Split('-')[0];
-                                        }, v =>
-                                        {
-                                            var directory = v.Split('-')[1]?.ToString();
+                                            var directory = d.Trim();
                                             if (!directory.IsOrExistDirectory())
                                             {
                                                 return null;
@@ -563,7 +570,7 @@ namespace CatFoodManager
             buttonColumn.UseColumnTextForButtonValue = false;
         }
 
-        private void Sync()
+        private async Task Sync()
         {
             GetPicturesPath();
             if (_pictureFolders == null)
@@ -571,39 +578,56 @@ namespace CatFoodManager
                 MessageBox.Show("图片路径配置为空, 请检查", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            if (_platformRegExp == null || !_platformRegExp.Any())
+
+            //var promptPath = Path.Combine(AppContext.BaseDirectory, "Prompts.json");
+            PromptLoader.Load("Prompts.json");
+            //if (!File.Exists(promptPath))
+            //{
+            //    MessageBox.Show("Prompts.json配置文件不存在, 请检查", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //    return;
+            //}
+
+            //var promptsJson = File.ReadAllText(promptPath);
+            //var prompts = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(promptsJson);PromptLoader.Get(PromptConstants.OcrAssistantPrompt)
+            var ocrPrompt = PromptLoader.Get(PromptConstants.OcrAssistantPrompt);
+            if (string.IsNullOrEmpty(ocrPrompt))
             {
-                _platformRegExp = _regExpService.GetAll();
+                MessageBox.Show("OcrAssistantPrompt配置为空, 请检查", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
-            string content;
-            string shopName;
-            var catFoods = new List<CatFood>();
-            PlatformRegExp? regPattern;
-            CatFood catFood;
-            Brand brand;
+            var bestPrices = new List<BestPrice>();
 
             foreach (var kv in _pictureFolders)
             {
                 var platform = kv.Key;
                 var paths = kv.Value;
-                regPattern = _platformRegExp.FirstOrDefault(r => r.Name == platform);
-                if (paths == null || regPattern == null) continue;
-                regPattern.AutoFillFields(true);
-                foreach (var path in paths)
+                if (paths == null) continue;
+
+                var folderPath = Path.GetDirectoryName(paths[0]);
+                if (string.IsNullOrEmpty(folderPath)) continue;
+
+                await _geminiOcrService.ValidateModelAsync();
+
+                var dtos = await _geminiOcrService.ProcessPicAsync<BestPriceDto>(folderPath, ocrPrompt);
+                foreach (var dto in dtos)
                 {
-                    content = _pictureContentService.GetContentFromPicture(path, needReduceNoise: true);
-                    (catFood, shopName) = _pictureContentService.GenerateCatFood(content, regPattern.RegularExpression, regPattern.FieldInfoList, path);
-                    brand = _brandService.Query(shopName);
-                    if (brand == null) continue;
-                    catFood.Brand = brand;
-                    catFood.BrandId = brand.Id;
-                    catFoods.Add(catFood);
+                    var bestPrice = new BestPrice
+                    {
+                        Name = dto.Name,
+                        PurchasedAt = dto.PurchasedAt,
+                        FinalPrice = dto.FinalPrice,
+                        Platform = Enum.TryParse<PlatformType>(platform, out var platformType) ? platformType : PlatformType.None,
+                        HasPurchased = dto.FinalPrice > 0,
+                        PicturePath = string.Empty
+                    };
+                    bestPrices.Add(bestPrice);
                 }
             }
-            if (catFoods.Count != 0)
+
+            if (bestPrices.Count != 0)
             {
-                _catFoodSerivce.BatchSave(catFoods);
+                _lowestPriceService.BatchSave(bestPrices);
             }
         }
 

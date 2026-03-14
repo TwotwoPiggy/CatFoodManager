@@ -6,6 +6,8 @@ using CommonTools;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OcrApi;
+using Twotwo.Agent.Extensions;
+using Twotwo.Agent.Interfaces;
 
 namespace CatFoodManager
 {
@@ -23,15 +25,15 @@ namespace CatFoodManager
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-            ConfigureServices(needMigrate: true);
+            ConfigureServicesAsync(needMigrate: true).GetAwaiter().GetResult();
 
 
-#pragma warning disable CS8604 // “˝”√¿‡–Õ≤Œ ˝ø…ƒ‹Œ™ null°£
+#pragma warning disable CS8604 // ÂèØËÉΩ‰º†ÂÖ• null ÂèÇÊï∞„ÄÇ
             Application.Run(ServiceProvider.GetService<Main>());
-#pragma warning restore CS8604 // “˝”√¿‡–Õ≤Œ ˝ø…ƒ‹Œ™ null°£
+#pragma warning restore CS8604 // ÂèØËÉΩ‰º†ÂÖ• null ÂèÇÊï∞„ÄÇ
         }
 
-        private static void ConfigureServices(bool needMigrate)
+        private static async Task ConfigureServicesAsync(bool needMigrate)
         {
             var services = new ServiceCollection();
             // Load configuration from appsettings.json
@@ -44,9 +46,12 @@ namespace CatFoodManager
             var tessdataPath = configuration.GetSection("AppSettings")?["TessdataPath"] ?? Path.Combine(AppContext.BaseDirectory, "tessdata");
 
             services.AddSingleton<IConfiguration>(configuration);
-            services.AddSingleton(typeof(Main))
-                    .AddScoped(typeof(BrandManager))
-                    .AddScoped(typeof(LowestPrice))
+
+            services.AddGeminiAgent(configuration, "AppSettings:AI");
+
+            services.AddSingleton<Main>()
+                    .AddScoped<BrandManager>()
+                    .AddScoped<LowestPrice>()
                     .AddScoped<SQLiteHelper>()
                     .AddScoped(serviceProvider => new OCRHelper(tessdataPath))
                     .AddScoped<IRepository, CommonRepository>()
@@ -55,7 +60,13 @@ namespace CatFoodManager
                     .AddScoped<IService<CatFood>, CatFoodService>(serviceProvider => new CatFoodService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
                     .AddScoped<IService<Factory>, FactoryService>(serviceProvider => new FactoryService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
                     .AddScoped<IService<BestPrice>, LowestPriceService>(serviceProvider => new LowestPriceService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
-                    .AddScoped<IPlatformRegExpService, PlatformRegExpService>(serviceProvider => new PlatformRegExpService(serviceProvider.GetRequiredService<IRepository>(), needMigrate));
+                    .AddScoped<IPlatformRegExpService, PlatformRegExpService>(serviceProvider => new PlatformRegExpService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
+                    .AddScoped<IGeminiOcrService, GeminiOcrService>(sp =>
+                    {
+                        var repo = sp.GetRequiredService<IRepository>();
+                        var agentService = sp.GetRequiredService<IGeminiAgentService>();
+                        return new GeminiOcrService(repo, agentService, needMigrate);
+                    });
             ServiceProvider = services.BuildServiceProvider();
 
         }

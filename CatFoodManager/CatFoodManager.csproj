@@ -13,10 +13,17 @@
 
   <ItemGroup>
     <None Remove="App.config" />
+    <None Remove="Prompts.json" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="icon\nya.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Prompts.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

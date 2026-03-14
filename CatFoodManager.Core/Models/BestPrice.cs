@@ -1,4 +1,4 @@
-﻿using CatFoodManager.Core.Statics;
+using CatFoodManager.Core.Statics;
 using SQLite;
 using SQLiteNetExtensions.Attributes;
 using System;
@@ -22,6 +22,12 @@ namespace CatFoodManager.Core.Models
         public decimal? FinalPrice { get; set; }
 
         public string? PicturePath { get; set; }
+
+        public string? FactoryName { get; set; }
+
+        public bool HasTestReport { get; set; }
+
+        public bool IsWorthRepurchasing { get; set; }
 
 
         public BestPrice()
