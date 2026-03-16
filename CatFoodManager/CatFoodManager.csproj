@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -28,14 +28,17 @@
 
   <ItemGroup>
     <PackageReference Include="Lemon.UI.Controls" Version="1.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.2" />
-    <PackageReference Include="ReaLTaiizor" Version="3.8.1.4" />
-    <PackageReference Include="Twotwo.CommonTools" Version="1.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
+    <PackageReference Include="ReaLTaiizor" Version="3.8.1.5" />
+    <PackageReference Include="Twotwo.CommonTools" Version="1.0.16" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CatFoodManager.Core\CatFoodManager.Core.csproj" />
+    <ProjectReference Include="..\CatFoodManager.Domain\CatFoodManager.Domain.csproj" />
+    <ProjectReference Include="..\CatFoodManager.Application\CatFoodManager.Application.csproj" />
+    <ProjectReference Include="..\CatFoodManager.Infrastructure\CatFoodManager.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

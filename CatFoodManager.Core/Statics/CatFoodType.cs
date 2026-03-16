@@ -1,4 +1,4 @@
-﻿using CatFoodManager.Core.Utils;
+using CatFoodManager.Core.Utils;
 using System.ComponentModel;
 
 namespace CatFoodManager.Core.Statics

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using CatFoodManager.Core.Interfaces;
+﻿using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
 
 namespace CatFoodManager.Core.Services

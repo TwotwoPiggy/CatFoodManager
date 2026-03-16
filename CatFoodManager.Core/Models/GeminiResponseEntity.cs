@@ -1,15 +1,14 @@
-using System;
 using SQLite;
 
 namespace CatFoodManager.Core.Models
 {
     public class GeminiResponseEntity : BaseEntity
     {
-        public string ResponseJson { get; set; }
+        public string ResponseJson { get; set; } = string.Empty;
 
-        public string ResponseText { get; set; }
+        public string ResponseText { get; set; } = string.Empty;
 
-        public string ModelVersion { get; set; }
+        public string ModelVersion { get; set; } = string.Empty;
 
         public int PromptToken { get; set; }
 

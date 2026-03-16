@@ -3,109 +3,79 @@ using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Statics;
 using CommonTools;
 using OcrApi;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using static SQLite.SQLite3;
 
 namespace CatFoodManager.Core.Services
 {
-	public class PictureContentService : ServiceBase
-	{
-		private readonly OCRHelper _ocrHelper;
-		private readonly IPlatformRegExpService _regExpService;
+    public class PictureContentService : ServiceBase
+    {
+        private readonly OCRHelper _ocrHelper;
+        private readonly IPlatformRegExpService _regExpService;
 
-        public PictureContentService(IRepository repo, OCRHelper ocrHelper, IPlatformRegExpService regExpService):base(repo)
+        public PictureContentService(IRepository repo, OCRHelper ocrHelper, IPlatformRegExpService regExpService) : base(repo)
         {
-			_ocrHelper = ocrHelper;
-			_regExpService = regExpService;
-		}
+            _ocrHelper = ocrHelper;
+            _regExpService = regExpService;
+        }
 
         private string _originPicturePath = string.Empty;
-		private string? _newPicturePath = string.Empty;
+        private string? _newPicturePath = string.Empty;
 
+        public string? NewPicturePath => _newPicturePath;
+        public string OriginPicturePath => _originPicturePath;
 
-		public string? NewPicturePath => _newPicturePath;
-		public string OriginPicturePath => _originPicturePath;
+        public void SetRegConfig(string regConfig)
+        {
+            ConfigManager.SetAppConfig("regPattern", regConfig);
+        }
 
+        public string? GetRegConfig()
+        {
+            return ConfigManager.GetAppConfig("regPattern");
+        }
 
-		public void SetRegConfig(string regConfig)
-		{
-			ConfigManager.SetAppConfig("regPattern", regConfig);
-		}
+        public string[]? GetRegConfigs()
+        {
+            return GetRegConfig()?.Split(";");
+        }
 
-		#region RegConfigs
-		public string? GetRegConfig()
-		{
-			return ConfigManager.GetAppConfig("regPattern");
-		}
+        public void SetTessdataPath(string path)
+        {
+            _ocrHelper.SetTessdataPath(path);
+        }
 
-		public string[]? GetRegConfigs()
-		{
-			return GetRegConfig()?.Split(";");
-		}
+        public string GetContentFromPicture(string picturePath, string? newPicturePath = null, bool needReduceNoise = false)
+        {
+            _originPicturePath = picturePath;
+            _newPicturePath = newPicturePath;
 
-		public void SetTessdataPath(string path)
-		{
-			try
-			{
-				_ocrHelper.SetTessdataPath(path);
-			}
-			catch (Exception)
-			{
-				throw;
-			}
-		}
-		#endregion
+            picturePath = needReduceNoise ? _newPicturePath = _ocrHelper.ReduceImageNoise(picturePath, newPicturePath) : _originPicturePath;
 
-		public string GetContentFromPicture(string picturePath, string? newPicturePath = null, bool needReduceNoise = false)
-		{
-			try
-			{
-				_originPicturePath = picturePath;
-				_newPicturePath = newPicturePath;
+            return _ocrHelper.GetTextFromPicture(picturePath).Replace(" ", string.Empty);
+        }
 
-				picturePath = needReduceNoise ? _newPicturePath = _ocrHelper.ReduceImageNoise(picturePath, newPicturePath) : _originPicturePath;
-
-				return _ocrHelper.GetTextFromPicture(picturePath).Replace(" ", string.Empty);
-			}
-			catch (Exception)
-			{
-				throw;
-			}
-		}
-
-		public (CatFood, string) GenerateCatFood(string content, string regPattern, Dictionary<string, int> fieldInfos, string picturePath)
-		{
-			var catFood = new CatFood() { PicturePath = picturePath, UpdatedAt = DateTime.Now };
-			var regex = new Regex(regPattern, RegexOptions.IgnoreCase);
-			var groups = regex.Match(content).Groups;
-			catFood.OrderId = groups[fieldInfos["orderId"]].Value;
-			catFood.Name = groups[fieldInfos["name"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
-			catFood.FoodType = catFood.Name.Contains("猫粮") || catFood.Name.Contains("主食") ? ProductType.CatFood : ProductType.CatSnack;
-			catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
-			catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;
-			catFood.PurchasedAt = DateTime.TryParse(groups[fieldInfos["purchasedAt"]].Value, out DateTime purchasedAt) ? purchasedAt : DateTime.Now;
-			var shopName = groups[fieldInfos["shopName"]].Value
-														.Replace("店",string.Empty)
-														.Replace("旗舰", string.Empty)
-														.Replace("京东", string.Empty)
-														.Replace("自营", string.Empty)
-														.Replace("官方", string.Empty)
-														.Replace("LEGENDSANDY", string.Empty)
-														.Replace("宠物", string.Empty)
-														.Replace("食品", string.Empty)
-														.Replace("海外", string.Empty);
-			return (catFood, shopName);
-		}
-
-		#region private method
-
-		#endregion
-	}
+        public (CatFood, string) GenerateCatFood(string content, string regPattern, Dictionary<string, int> fieldInfos, string picturePath)
+        {
+            var catFood = new CatFood() { PicturePath = picturePath, UpdatedAt = DateTime.Now };
+            var regex = new Regex(regPattern, RegexOptions.IgnoreCase);
+            var groups = regex.Match(content).Groups;
+            catFood.OrderId = groups[fieldInfos["orderId"]].Value;
+            catFood.Name = groups[fieldInfos["name"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
+            catFood.FoodType = catFood.Name.Contains("猫粮") || catFood.Name.Contains("主食") ? ProductType.CatFood : ProductType.CatSnack;
+            catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
+            catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;
+            catFood.PurchasedAt = DateTime.TryParse(groups[fieldInfos["purchasedAt"]].Value, out DateTime purchasedAt) ? purchasedAt : DateTime.Now;
+            var shopName = groups[fieldInfos["shopName"]].Value
+                                                        .Replace("店", string.Empty)
+                                                        .Replace("旗舰", string.Empty)
+                                                        .Replace("京东", string.Empty)
+                                                        .Replace("自营", string.Empty)
+                                                        .Replace("官方", string.Empty)
+                                                        .Replace("LEGENDSANDY", string.Empty)
+                                                        .Replace("宠物", string.Empty)
+                                                        .Replace("食品", string.Empty)
+                                                        .Replace("海外", string.Empty);
+            return (catFood, shopName);
+        }
+    }
 }

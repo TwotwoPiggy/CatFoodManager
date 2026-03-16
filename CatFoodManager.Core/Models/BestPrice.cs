@@ -1,15 +1,8 @@
 using CatFoodManager.Core.Statics;
-using SQLite;
-using SQLiteNetExtensions.Attributes;
-using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
-using System.Text;
 
 namespace CatFoodManager.Core.Models
 {
-    public class BestPrice: BaseEntity
+    public class BestPrice : BaseEntity
     {
         public ProductType Type { get; set; }
 
@@ -29,11 +22,9 @@ namespace CatFoodManager.Core.Models
 
         public bool IsWorthRepurchasing { get; set; }
 
-
         public BestPrice()
         {
             CreatedAt = DateTime.Now;
         }
-
     }
 }

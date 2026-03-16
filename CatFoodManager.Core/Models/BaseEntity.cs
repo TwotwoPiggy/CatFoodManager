@@ -1,8 +1,5 @@
 ﻿using SQLite;
-using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Text;
 
 namespace CatFoodManager.Core.Models
 {
@@ -12,7 +9,7 @@ namespace CatFoodManager.Core.Models
         [DataMember]
         public long Id { get; set; }
 
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
 
         [Ignore]
@@ -25,22 +22,22 @@ namespace CatFoodManager.Core.Models
         [Column("CreatedAt")]
         public string CreatedAtString
         {
-            get { return CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"); }
-            set { CreatedAt = DateTime.Parse(value); }
+            get => CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+            set => CreatedAt = DateTime.Parse(value);
         }
 
         [Column("UpdatedAt")]
         public string? UpdatedAtString
         {
-            get { return UpdatedAt.HasValue ? UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : null; }
-            set { UpdatedAt = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value); }
+            get => UpdatedAt.HasValue ? UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : null;
+            set => UpdatedAt = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value);
         }
 
         [Column("PurchasedAt")]
         public string? PurchasedAtString
         {
-            get { return PurchasedAt.HasValue ? PurchasedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : null; }
-            set { PurchasedAt = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value); }
+            get => PurchasedAt.HasValue ? PurchasedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : null;
+            set => PurchasedAt = string.IsNullOrEmpty(value) ? null : DateTime.Parse(value);
         }
     }
 }

@@ -1,10 +1,8 @@
 using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
-using System.Collections.Generic;
 using Newtonsoft.Json;
 using Twotwo.Agent.Interfaces;
 using Twotwo.Agent.Types;
-using Twotwo.Agent.Services;
 
 namespace CatFoodManager.Core.Services
 {

@@ -4,52 +4,49 @@ using SQLite;
 
 namespace CatFoodManager.Core.Models
 {
-	public class PlatformRegExp
-	{
-		[PrimaryKey, AutoIncrement]
-		public long Id { get; set; }
+    public class PlatformRegExp
+    {
+        [PrimaryKey, AutoIncrement]
+        public long Id { get; set; }
 
-		public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
-		public PlatformType Platform { get; set; }
+        public PlatformType Platform { get; set; }
 
-        public string RegularExpression { get; set; }
+        public string RegularExpression { get; set; } = string.Empty;
 
-		public string FieldInfos { get; set; }
-		[Ignore]
-		public Dictionary<string,int>? FieldInfoList { get; set; }
+        public string FieldInfos { get; set; } = string.Empty;
+        [Ignore]
+        public Dictionary<string, int>? FieldInfoList { get; set; }
 
+        public void AutoFillFields(bool isReadAction)
+        {
+            SetName();
+            if (isReadAction)
+            {
+                SetFieldInfoList();
+            }
+            else
+            {
+                SetFieldInfos();
+            }
+        }
 
+        private void SetName()
+        {
+            Name = Platform.ToString();
+        }
 
-		public void AutoFillFields(bool isReadAction)
-		{
-			SetName();
-			if (isReadAction)
-			{
-				SetFieldInfoList();
-			}
-			else
-			{
-				SetFieldInfos();
-			}
-		}
+        private void SetFieldInfos()
+        {
+            FieldInfos = FieldInfoList == null ? string.Empty : JsonConvert.SerializeObject(FieldInfoList);
+        }
 
-		private void SetName()
-		{
-			Name = Platform.ToString();
-		}
-
-		private void SetFieldInfos()
-		{
-			FieldInfos = FieldInfoList == null ? string.Empty : JsonConvert.SerializeObject(FieldInfoList);
-		}
-
-		private void SetFieldInfoList()
-		{
-			FieldInfoList = string.IsNullOrWhiteSpace(FieldInfos) 
-							? default 
-							: JsonConvert.DeserializeObject<Dictionary<string, int>?>(FieldInfos);
-		}
-
-	}
+        private void SetFieldInfoList()
+        {
+            FieldInfoList = string.IsNullOrWhiteSpace(FieldInfos)
+                            ? default
+                            : JsonConvert.DeserializeObject<Dictionary<string, int>?>(FieldInfos);
+        }
+    }
 }

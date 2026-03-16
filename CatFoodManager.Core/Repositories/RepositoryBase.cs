@@ -1,5 +1,6 @@
 ﻿using CatFoodManager.Core.Interfaces;
 using CommonTools;
+using CommonTools.Database;
 
 namespace CatFoodManager.Core.Repositories
 {

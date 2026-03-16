@@ -1,15 +1,12 @@
-﻿using CatFoodManager.Core.Interfaces;
+using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CatFoodManager.Core.Services
 {
-    public class LowestPriceService: GenericServiceBase<BestPrice>, IService<BestPrice>
+    public class LowestPriceService : GenericServiceBase<BestPrice>, IService<BestPrice>
     {
-        public LowestPriceService(IRepository repo, bool needMigrate): base(repo, needMigrate) { } 
-        
+        public LowestPriceService(IRepository repo, bool needMigrate) : base(repo, needMigrate) { }
+
         public void Save(BestPrice bestPrice)
         {
             ArgumentNullException.ThrowIfNull(bestPrice);
@@ -24,7 +21,6 @@ namespace CatFoodManager.Core.Services
             _repo.BatchAdd(list);
         }
 
-
         public BestPrice? Query(long id) => _repo.Query<BestPrice>(price => price.Id == id, true);
 
         public BestPrice? Query(string catFoodName)
@@ -32,7 +28,6 @@ namespace CatFoodManager.Core.Services
             if (string.IsNullOrWhiteSpace(catFoodName)) return null;
             return _repo.Query<BestPrice>(price => price.Name == catFoodName, true);
         }
-
 
         public IEnumerable<BestPrice> GetAll() => _repo.QueryList<BestPrice>(loadChildren: true);
 
@@ -57,6 +52,5 @@ namespace CatFoodManager.Core.Services
         }
 
         public void Delete(int id) => _repo.Delete<BestPrice>(id);
-
     }
 }

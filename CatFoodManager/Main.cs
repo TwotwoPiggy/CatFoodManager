@@ -1,13 +1,12 @@
+using CatFoodManager.Controls;
 using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Models.Dtos;
 using CatFoodManager.Core.Services;
 using CatFoodManager.Core.Statics;
+using CatFoodManager.ViewModels;
 using CommonTools;
 using Lemon.UI.Controls;
-using Newtonsoft.Json;
-using SQLiteNetExtensions.Attributes;
-using SQLitePCL;
 using System.ComponentModel;
 using System.Data;
 using System.Text;
@@ -27,57 +26,35 @@ namespace CatFoodManager
         private readonly IPlatformRegExpService _regExpService;
         private readonly PictureContentService _pictureContentService;
         private readonly IGeminiOcrService _geminiOcrService;
-        #endregion
-
-        #region Page
-
-        /// <summary>
-        /// 总记录数
-        /// </summary>
-        private int _totalCount = 0;
-
-        /// <summary>
-        /// 总页数
-        /// </summary>
-        private int _pageCount = 0;
-
-        /// <summary>
-        /// 当前页数
-        /// </summary>
-        private int _currentPage = 0;
-
-        /// <summary>
-        /// 页数最大记录
-        /// </summary>
-        private int _pageSize => Int32.TryParse(pageSizeComboBox.SelectedItem?.ToString(), out int pageSize) ? pageSize : 50;
-
+        private readonly MainViewModel _viewModel;
         #endregion
 
         #region view
-        private BindingSource _bindingSource = [];
-        private PictureView _pictureView;
-        private BrandManager _brandManager;
-        private LowestPrice _lowestPrice;
+        private PictureView? _pictureView;
+        private BrandManager? _brandManager;
+        private LowestPrice? _lowestPrice;
+        private readonly OpenFileDialog _openFileDialog = new();
         #endregion
 
         #region fields
         private Dictionary<string, string[]?>? _pictureFolders;
-        private IEnumerable<PlatformRegExp> _platformRegExp;
-        private const string _baseCatfoodQueryString = "SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id \r\nWHERE b.Name like";
-        private const string _baseBestPriceQueryString = "SELECT DISTINCT a.*\r\nFROM BestPrice a\r\nWHERE a.Name like";
+        private const string BaseCatfoodQueryString = "SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id \r\nWHERE b.Name like";
+        private const string BaseBestPriceQueryString = "SELECT DISTINCT a.*\r\nFROM BestPrice a\r\nWHERE a.Name like";
 
-        private bool IsLowestPrice => this.rbnLowestPrice.Checked;
-
-        private static readonly IEnumerable<string> _searchableProperties = typeof(CatFood)
-            .GetProperties()
-            .Where(p => !p.CustomAttributes.Any(a => a.AttributeType.Name == "IgnoreAttribute" || a.AttributeType.BaseType?.Name == "RelationshipAttribute"))
-            .Select(p => p.Name)
-            .ToList();
+        private bool IsLowestPrice => rbnLowestPrice.Checked;
         #endregion
 
-        public Main(IService<CatFood> catFoodSerivce, IService<Brand> brandService, IService<Factory> factoryService, IService<BestPrice> lowestPriceService,
-                    IPlatformRegExpService regExpService, PictureContentService pictureContentService,
-                    BrandManager brandManager, LowestPrice lowestPrice, IGeminiOcrService geminiOcrService)
+        public Main(
+            IService<CatFood> catFoodSerivce,
+            IService<Brand> brandService,
+            IService<Factory> factoryService,
+            IService<BestPrice> lowestPriceService,
+            IPlatformRegExpService regExpService,
+            PictureContentService pictureContentService,
+            BrandManager brandManager,
+            LowestPrice lowestPrice,
+            IGeminiOcrService geminiOcrService,
+            MainViewModel viewModel)
         {
             InitializeComponent();
             _catFoodSerivce = catFoodSerivce;
@@ -90,7 +67,9 @@ namespace CatFoodManager
             _brandManager = brandManager;
             _lowestPrice = lowestPrice;
             _geminiOcrService = geminiOcrService;
+            _viewModel = viewModel;
             InitializeContext();
+            SetupControlBindings();
         }
 
         #region events
@@ -100,13 +79,8 @@ namespace CatFoodManager
             InitComponents();
             InitColumns();
             LoadData();
-            pageSizeComboBox.SelectedIndexChanged += pageSizeComboBox_SelectedIndexChanged;
-            dataView.KeyDown += DataView_KeyDown;
-            dataView.Leave += DataView_Leave;
-            dataView.CellFormatting += DataView_CellFormatting;
         }
 
-        //todo: create BestPrice & progress bar
         private async void btnFunction_Click(object sender, EventArgs e)
         {
             try
@@ -142,7 +116,8 @@ namespace CatFoodManager
         {
             if (IsLowestPrice)
             {
-                this.btnFunction.Text = ComponentConfigs.CreateButtonName;
+                btnFunction.Text = ComponentConfigs.CreateButtonName;
+                _viewModel.IsLowestPrice = true;
                 InitColumns();
                 LoadData();
             }
@@ -152,18 +127,18 @@ namespace CatFoodManager
         {
             if (!IsLowestPrice)
             {
-                this.btnFunction.Text = ComponentConfigs.SyncButtonName;
+                btnFunction.Text = ComponentConfigs.SyncButtonName;
+                _viewModel.IsLowestPrice = false;
                 InitColumns();
                 LoadData();
             }
         }
-
         #endregion
 
         #region search control
-        private void searchBtn_Click(object sender, EventArgs e)
+        private void searchUserControl_SearchClicked(object sender, EventArgs e)
         {
-            var searchKey = searchText.Text?.Trim();
+            var searchKey = searchUserControl.SearchText?.Trim();
             if (string.IsNullOrEmpty(searchKey))
             {
                 LoadData();
@@ -173,19 +148,17 @@ namespace CatFoodManager
             {
                 searchKey = $"主食{searchKey}";
             }
-            var sb = new StringBuilder(IsLowestPrice ? _baseBestPriceQueryString : _baseCatfoodQueryString);
+            var sb = new StringBuilder(IsLowestPrice ? BaseBestPriceQueryString : BaseCatfoodQueryString);
             var args = new List<object>();
 
-            // First condition: WHERE b.Name like ?
             sb.Append(" ?");
             args.Add($"%{searchKey}%");
-            // Handle specific keywords for ProductType
+
             try
             {
                 if (searchKey == "猫粮" || searchKey == "零食" || searchKey == "其他" || searchKey.Contains("主食"))
                 {
                     sb.Append($" OR a.{(IsLowestPrice ? "Type" : "FoodType")} = ?");
-
                     var enumVal = searchKey.GetEnumFromDescription<ProductType>();
                     args.Add((int)enumVal);
                 }
@@ -197,11 +170,9 @@ namespace CatFoodManager
                 {
                     sb.Append($" OR a.{(IsLowestPrice ? "Type" : "FoodType")} = 3");
                 }
-
             }
-            catch (Exception)
+            catch
             {
-
                 throw;
             }
 
@@ -211,108 +182,74 @@ namespace CatFoodManager
                 args.Add($"%{searchKey}%");
             }
 
-            //foreach (var prop in _searchableProperties)
-            //{
-            //    sb.Append($" OR a.{prop} LIKE ?");
-            //    args.Add($"%{searchKey}%");
-            //}
-
-
             LoadData(sb.ToString(), [.. args]);
         }
 
-
-        private void searchText_KeyDown(object sender, KeyEventArgs e)
+        private void searchUserControl_ResetClicked(object sender, EventArgs e)
         {
-            if (e.KeyCode == Keys.Enter)
-            {
-                searchBtn_Click(sender, e);
-            }
-        }
-
-        private void searchText_TextChanged(object sender, EventArgs e)
-        {
-            searchBtn_Click(sender, e);
-        }
-
-        private void btnReset_Click(object sender, EventArgs e)
-        {
-            this.searchText.Text = string.Empty;
+            LoadData();
         }
         #endregion
 
         #region Main View
-        private void DataView_Leave(object? sender, EventArgs e)
+        private void dataGridUserControl_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            dataView.EndEdit();
-        }
+            if (sender is not DataGridUserControl dataGridControl) return;
+            var dataGridView = dataGridControl.DataGridView;
+            if (dataGridView.EditingControl == null) return;
 
-        private void DataView_KeyDown(object? sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                dataView.EndEdit();
-                e.Handled = true;
-            }
-        }
-
-        /// <summary>
-        /// update
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void dataView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-            if (sender is not DataGridView dataGridView || dataGridView.EditingControl == null) return;
-            var id = GetIdInSpecifiedRow<long>(sender, e.RowIndex, "Id");
+            var id = dataGridControl.GetIdInRow(e.RowIndex, "Id");
             if (id == null) return;
+
             var currentCell = dataGridView.CurrentCell;
             var valueToUpdate = currentCell?.EditedFormattedValue;
             if (valueToUpdate == null) return;
+
             var fieldName = currentCell?.OwningColumn?.Name;
             if (fieldName == "TypeToShow")
             {
                 fieldName = "Type";
             }
+
             if (IsLowestPrice)
             {
                 UpdateCell(_lowestPriceService, (long)id, fieldName, valueToUpdate);
             }
-            else//catfood inventory
+            else
             {
                 UpdateCell(_catFoodSerivce, (long)id, fieldName, valueToUpdate);
             }
             TimedMessageBox.Show("已更新!", "操作成功", 3, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        /// <summary>
-        /// enable the comboBox value change event
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void dataView_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        private void dataGridUserControl_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
         {
-            if (!dataView.IsCurrentCellDirty) return;
-            if (sender is not DataGridView) return;
-            foreach (DataGridViewCell cell in ((DataGridView)sender).SelectedCells)
+            if (sender is not DataGridUserControl dataGridControl) return;
+            var dataGridView = dataGridControl.DataGridView;
+            if (!dataGridView.IsCurrentCellDirty) return;
+
+            foreach (DataGridViewCell cell in dataGridView.SelectedCells)
             {
-                if (cell.ColumnIndex == dataView.Columns["TypeToShow"]?.Index)
+                if (cell.ColumnIndex == dataGridView.Columns["TypeToShow"]?.Index)
                 {
-                    dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                    dataGridView.CommitEdit(DataGridViewDataErrorContexts.Commit);
                     continue;
                 }
-                if (cell.ColumnIndex == dataView.Columns["HasPurchased"]?.Index ||
-                    cell.ColumnIndex == dataView.Columns["HasTestReport"]?.Index ||
-                    cell.ColumnIndex == dataView.Columns["IsWorthRepurchasing"]?.Index)
+                if (cell.ColumnIndex == dataGridView.Columns["HasPurchased"]?.Index ||
+                    cell.ColumnIndex == dataGridView.Columns["HasTestReport"]?.Index ||
+                    cell.ColumnIndex == dataGridView.Columns["IsWorthRepurchasing"]?.Index)
                 {
-                    dataView.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                    dataGridView.CommitEdit(DataGridViewDataErrorContexts.Commit);
                     if (!IsLowestPrice) return;
-                    var currentCell = dataView.CurrentCell;
+
+                    var currentCell = dataGridView.CurrentCell;
                     var id = currentCell?.OwningRow?.Cells["Id"].Value;
                     if (id == null) return;
+
                     var bestPrice = _lowestPriceService.Query((long)id);
                     var valueToUpdate = currentCell?.EditedFormattedValue;
                     var fieldName = currentCell?.OwningColumn?.Name;
+
                     if (bestPrice != null && valueToUpdate != null && fieldName != null)
                     {
                         var propertyToUpdate = bestPrice.GetType().GetProperty(fieldName);
@@ -324,24 +261,28 @@ namespace CatFoodManager
             }
         }
 
-
-        private void DataView_CellClick(object? sender, DataGridViewCellEventArgs e)
+        private void dataGridUserControl_CellClicked(object sender, DataGridViewCellEventArgs e)
         {
-            // Ignore clicks that are not on button cells. 
-            var picturePath = GetCellValueInSpecifiedColumn<string>(sender, e.ColumnIndex, "PictureButton", e.RowIndex, "PicturePath");
+            if (sender is not DataGridUserControl dataGridControl) return;
+            var dataGridView = dataGridControl.DataGridView;
 
-            if (picturePath == null) return;
+            var picturePath = dataGridControl.GetCellValue<string>(e.RowIndex, "PicturePath");
+            var columnIndex = e.ColumnIndex;
+
+            if (dataGridView.Columns["PictureButton"]?.Index != columnIndex || picturePath == null) return;
+
             if (!string.IsNullOrEmpty(picturePath))
             {
                 _pictureView = _pictureView == null || _pictureView.IsDisposed ? new PictureView(picturePath) : _pictureView;
                 _pictureView.Show();
             }
-            else if (openFileDialog.ShowDialog() == DialogResult.OK)//picturePath is empty, upload picture
+            else if (_openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                var id = GetIdInSpecifiedRow<long>(sender, e.RowIndex, "Id");
+                var id = dataGridControl.GetIdInRow(e.RowIndex, "Id");
                 if (id == null) return;
+
                 var bestPrice = _lowestPriceService.Query((long)id);
-                var pictureToUpdate = this.openFileDialog.FileName;
+                var pictureToUpdate = _openFileDialog.FileName;
                 if (bestPrice != null && !string.IsNullOrWhiteSpace(pictureToUpdate))
                 {
                     bestPrice.PicturePath = pictureToUpdate;
@@ -352,80 +293,66 @@ namespace CatFoodManager
             }
         }
 
-        private void DataView_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        private void dataGridView_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
-            var picturePath = GetCellValueInSpecifiedColumn<string>(sender, e.ColumnIndex, "PictureButton", e.RowIndex, "PicturePath");
-            if (picturePath == null) return;
+            if (sender is not DataGridView dataGridView) return;
+
+            if (dataGridView.Columns["PictureButton"]?.Index != e.ColumnIndex) return;
+
+            var row = dataGridView.Rows[e.RowIndex];
+            if (row == null) return;
+
+            var cell = row.Cells["PicturePath"];
+            var picturePath = cell?.Value?.ToString();
+
             e.Value = string.IsNullOrWhiteSpace(picturePath) ? "上传图片" : "查看照片";
             e.FormattingApplied = true;
         }
         #endregion
 
         #region page control
-
-        private void pageSizeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        private void paginationUserControl_FirstPageClicked(object sender, EventArgs e)
         {
+            _viewModel.GoToFirstPage();
             LoadData();
         }
 
-        private void homeBtn_Click(object sender, EventArgs e)
+        private void paginationUserControl_PreviousPageClicked(object sender, EventArgs e)
         {
-            if (!homeBtn.Enabled) return;
-            _currentPage = 1;
+            _viewModel.PreviousPage();
             LoadData();
         }
 
-        private void prePageBtn_Click(object sender, EventArgs e)
+        private void paginationUserControl_NextPageClicked(object sender, EventArgs e)
         {
-            if (!prePageBtn.Enabled) return;
-            _currentPage--;
+            _viewModel.NextPage();
             LoadData();
         }
 
-        private void nextPageBtn_Click(object sender, EventArgs e)
+        private void paginationUserControl_LastPageClicked(object sender, EventArgs e)
         {
-            if (!nextPageBtn.Enabled) return;
-            _currentPage++;
+            _viewModel.GoToLastPage();
             LoadData();
         }
 
-        private void lastPageBtn_Click(object sender, EventArgs e)
+        private void paginationUserControl_GoToPageClicked(object sender, int page)
         {
-            if (!lastPageBtn.Enabled) return;
-            _currentPage = _pageCount;
+            _viewModel.GoToPage(page);
             LoadData();
         }
 
-        private void jumpBtn_Click(object sender, EventArgs e)
+        private void paginationUserControl_PageSizeChanged(object sender, int pageSize)
         {
-            #region validation
-            if (!Int32.TryParse(jumpPageText.Text, out int gotoPage))
-            {
-                MessageBox.Show("待跳转的页数不合规, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            if (gotoPage <= 0)
-            {
-                MessageBox.Show("待跳转的页数超出当前支持的最小页数, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            if (gotoPage > _pageCount)
-            {
-                MessageBox.Show("待跳转的页数超出当前支持的最大页数, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            #endregion
-            _currentPage = gotoPage;
+            _viewModel.UpdatePageSize(pageSize);
             LoadData();
         }
-
-
         #endregion
 
         #region config control
-
         private void savePicConfigBtn_Click(object sender, EventArgs e)
         {
             ConfigManager.SetAppConfig(ConfigNames.PictureFolders, picConfigText.Text);
         }
-
         #endregion
 
         #endregion
@@ -438,72 +365,88 @@ namespace CatFoodManager
             Context.FillPlatformRegExps(_regExpService.GetAll());
         }
 
+        private void SetupControlBindings()
+        {
+            searchUserControl.SearchClicked += searchUserControl_SearchClicked;
+            searchUserControl.ResetClicked += searchUserControl_ResetClicked;
+
+            paginationUserControl.FirstPageClicked += paginationUserControl_FirstPageClicked;
+            paginationUserControl.PreviousPageClicked += paginationUserControl_PreviousPageClicked;
+            paginationUserControl.NextPageClicked += paginationUserControl_NextPageClicked;
+            paginationUserControl.LastPageClicked += paginationUserControl_LastPageClicked;
+            paginationUserControl.GoToPageClicked += paginationUserControl_GoToPageClicked;
+            paginationUserControl.PageSizeChanged += paginationUserControl_PageSizeChanged;
+
+            dataGridUserControl.CellClicked += dataGridUserControl_CellClicked;
+            dataGridUserControl.CellValueChanged += dataGridUserControl_CellValueChanged;
+            dataGridUserControl.CurrentCellDirtyStateChanged += dataGridUserControl_CurrentCellDirtyStateChanged;
+            dataGridUserControl.DataGridView.CellFormatting += dataGridView_CellFormatting;
+        }
+
         private void InitComponents()
         {
-            pageSizeComboBox.SelectedIndex = 2;
-            dataView.EditMode = DataGridViewEditMode.EditOnEnter;
-            dataView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            _currentPage = 1;
-            this.btnFunction.Text = ComponentConfigs.CreateButtonName;
+            paginationUserControl.Initialize(2);
+            dataGridUserControl.Initialize();
+            _viewModel.CurrentPage = 1;
+            btnFunction.Text = ComponentConfigs.CreateButtonName;
         }
 
         private void InitColumns()
         {
-            dataView.Columns.Clear();
-            dataView.AutoGenerateColumns = false;
-            // When in lowest price mode, make columns fill the available grid width
-            dataView.AutoSizeColumnsMode = IsLowestPrice ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.None;
+            dataGridUserControl.ClearColumns();
+            var autoSizeColumnsMode = IsLowestPrice;
             var headersToShow = IsLowestPrice ? ColumnHeaders.BestPriceHeaders : ColumnHeaders.CatFoodHeaders;
+
             foreach (DataGridViewColumn column in headersToShow.Values)
             {
                 if (column == null) continue;
                 column.Visible = !CustomFilters.ColumnsDisableToShow.Contains(column.Name);
-                column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                // Only set AutoSizeMode to AllCells when it hasn't been specified in the column definition
-                if (column.AutoSizeMode == DataGridViewAutoSizeColumnMode.NotSet)
-                {
-                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
-                }
+
                 if (column.Name == "TypeToShow")
                 {
-                    if (column is not DataGridViewComboBoxColumn comboBox) continue;
-                    SetComboBoxWithEnums(comboBox);
+                    if (column is DataGridViewComboBoxColumn comboBox)
+                    {
+                        SetComboBoxWithEnums(comboBox);
+                    }
                 }
                 else if (column.Name == "PictureButton")
                 {
-                    if (column is not DataGridViewButtonColumn button) continue;
-                    SetButtonCellColumn(button);
+                    if (column is DataGridViewButtonColumn button)
+                    {
+                        SetButtonCellColumn(button);
+                    }
                 }
-                dataView.Columns.Add(column);
+                dataGridUserControl.AddColumn(column);
             }
-            dataView.CellClick += new DataGridViewCellEventHandler(DataView_CellClick);
-
-        }
-
-        private void SetLabels()
-        {
-            totalLabel.Text = $"共 {_totalCount} 条记录";
-            pageInfoLabel.Text = $"当前页 {_currentPage}/{_pageCount}";
         }
 
         private void LoadData(string? filter = null, params object[] args)
         {
             var queryArgs = args ?? [];
+
             if (IsLowestPrice)
             {
-                (var lowestPriceResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _lowestPriceService.GetAllWithCount() : _lowestPriceService.FuzzyQueryWithCount(filter, queryArgs);
-                _bindingSource!.DataSource = lowestPriceResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+                var (results, totalCount) = string.IsNullOrWhiteSpace(filter)
+                    ? _lowestPriceService.GetAllWithCount()
+                    : _lowestPriceService.FuzzyQueryWithCount(filter, queryArgs);
+                dataGridUserControl.DataSource = results.Skip((_viewModel.CurrentPage - 1) * _viewModel.PageSize).Take(_viewModel.PageSize).ToList();
+                _viewModel.TotalCount = totalCount;
             }
             else
             {
-                (var catFoodResults, _totalCount) = string.IsNullOrWhiteSpace(filter) ? _catFoodSerivce.GetAllWithCount() : _catFoodSerivce.FuzzyQueryWithCount(filter, queryArgs);
-                _bindingSource!.DataSource = catFoodResults.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+                var (results, totalCount) = string.IsNullOrWhiteSpace(filter)
+                    ? _catFoodSerivce.GetAllWithCount()
+                    : _catFoodSerivce.FuzzyQueryWithCount(filter, queryArgs);
+                dataGridUserControl.DataSource = results.Skip((_viewModel.CurrentPage - 1) * _viewModel.PageSize).Take(_viewModel.PageSize).ToList();
+                _viewModel.TotalCount = totalCount;
             }
 
-            dataView.DataSource = _bindingSource;
-            _pageCount = Convert.ToInt32(Math.Ceiling((double)_totalCount / _pageSize));
-            SetLabels();
-            ControlButtons();
+            _viewModel.PageCount = _viewModel.TotalCount == 0 ? 1 : (int)Math.Ceiling((double)_viewModel.TotalCount / _viewModel.PageSize);
+
+            paginationUserControl.CurrentPage = _viewModel.CurrentPage;
+            paginationUserControl.PageCount = _viewModel.PageCount;
+            paginationUserControl.TotalCount = _viewModel.TotalCount;
+
             Refresh();
         }
 
@@ -512,37 +455,32 @@ namespace CatFoodManager
             picConfigText.Text = ConfigManager.GetAppConfig(ConfigNames.PictureFolders);
         }
 
-        private void ControlButtons()
-        {
-            homeBtn.Enabled = prePageBtn.Enabled = _currentPage != 1;
-            lastPageBtn.Enabled = nextPageBtn.Enabled = _currentPage != _pageCount;
-        }
-
         private void GetPicturesPath()
         {
             if (_pictureFolders != null && _pictureFolders.Any()) return;
+
             var directories = ConfigManager.GetAppConfig(ConfigNames.PictureFolders);
             if (string.IsNullOrWhiteSpace(directories))
             {
                 MessageBox.Show($"照片路径配置:{directories}无效或者不存在, 请检查!", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
             _pictureFolders = directories.TrimEnd(';').Split(';')
-                                        .Where(d => !string.IsNullOrWhiteSpace(d))
-                                        .ToDictionary(d => Path.GetFileName(d.Trim()), d =>
-                                        {
-                                            var directory = d.Trim();
-                                            if (!directory.IsOrExistDirectory())
-                                            {
-                                                return null;
-                                            }
-                                            return FileManager
-                                                        .GetFiles(directory)
-                                                        .Where(p => CustomFilters
-                                                                        .PictureExtensions
-                                                                        .Contains(p.GetExtension().TrimStart('.').ToLower()))
-                                                        .ToArray();
-                                        });
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .ToDictionary(d => Path.GetFileName(d.Trim()), d =>
+                {
+                    var directory = d.Trim();
+                    if (!directory.IsOrExistDirectory())
+                    {
+                        return null;
+                    }
+                    return FileManager
+                        .GetFiles(directory)
+                        .Where(p => CustomFilters.PictureExtensions.Contains(p.GetExtension().TrimStart('.').ToLower()))
+                        .ToArray();
+                });
+
             if (_pictureFolders?.Count == 0)
             {
                 var message = $"照片路径配置:{directories}无效或者不存在, 请检查!";
@@ -579,16 +517,7 @@ namespace CatFoodManager
                 return;
             }
 
-            //var promptPath = Path.Combine(AppContext.BaseDirectory, "Prompts.json");
             PromptLoader.Load("Prompts.json");
-            //if (!File.Exists(promptPath))
-            //{
-            //    MessageBox.Show("Prompts.json配置文件不存在, 请检查", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //    return;
-            //}
-
-            //var promptsJson = File.ReadAllText(promptPath);
-            //var prompts = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(promptsJson);PromptLoader.Get(PromptConstants.OcrAssistantPrompt)
             var ocrPrompt = PromptLoader.Get(PromptConstants.OcrAssistantPrompt);
             if (string.IsNullOrEmpty(ocrPrompt))
             {
@@ -631,56 +560,22 @@ namespace CatFoodManager
             }
         }
 
-
-        private long? GetIdInSpecifiedRow<T>(object? sender, int rowIndex, string targetColumnName)
-        {
-            if (sender is not DataGridView dataGridView)
-                return null;
-            var row = dataGridView.Rows[rowIndex];
-            if (row == null) return default;
-            var cell = row.Cells[targetColumnName];
-            if (cell == null || cell.Value == null) return default;
-            return (long)cell.Value;
-        }
-
-        private long? GetIdInSpecifiedRow<T>(DataGridView dataGridView, int rowIndex, string targetColumnName)
-        {
-            if (dataGridView == null)
-                return null;
-            var row = dataGridView.Rows[rowIndex];
-            if (row == null) return default;
-            var cell = row.Cells[targetColumnName];
-            if (cell == null || cell.Value == null) return default;
-            return (long)cell.Value;
-        }
-
-        private T? GetCellValueInSpecifiedColumn<T>(object? sender, int columnIndex, string sourceColumnName, int rowIndex, string targetColumnName) where T : class
-        {
-            if (sender is not DataGridView dataGridView || columnIndex != dataGridView.Columns[sourceColumnName]?.Index)
-                return null;
-            var row = dataGridView.Rows[rowIndex];
-            if (row == null) return default;
-            var cell = row.Cells[targetColumnName];
-            if (cell == null || cell.Value == null) return default;
-            return (T)cell.Value;
-        }
-
         private void UpdateCell<T>(IService<T> service, long id, string? fieldName, object? valueToUpdate) where T : BaseEntity
         {
             if (valueToUpdate == null) return;
             var entity = service.Query(id);
             if (entity == null) return;
+
             if (fieldName == "TypeToShow")
             {
                 fieldName = "Type";
             }
+
             var propertyToUpdate = entity.GetType().GetProperty(fieldName ?? "");
             propertyToUpdate?.SetValue(entity, TypeDescriptor.GetConverter(propertyToUpdate.PropertyType).ConvertFrom(valueToUpdate));
             entity.UpdatedAt = DateTime.Now;
             service.Update(entity);
         }
         #endregion
-
-
     }
 }

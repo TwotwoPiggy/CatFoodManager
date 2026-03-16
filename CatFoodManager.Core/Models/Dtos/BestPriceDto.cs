@@ -1,10 +1,8 @@
-using System;
-
 namespace CatFoodManager.Core.Models.Dtos
 {
     public class BestPriceDto
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         public DateTime? PurchasedAt { get; set; }
 
