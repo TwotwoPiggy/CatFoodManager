@@ -1,4 +1,5 @@
-using CatFoodManager.Infrastructure;
+
+using CatFoodManager.Infrastructure;
 
 namespace CatFoodManager.WebAPI
 {

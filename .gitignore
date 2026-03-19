@@ -366,3 +366,4 @@ FodyWeavers.xsd
 appsettings.json
 appsettings.*.json
 !appsettings.example.json
+/CatFoodManager/appsettings.json

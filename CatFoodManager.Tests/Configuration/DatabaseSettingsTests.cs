@@ -8,7 +8,7 @@ public class DatabaseSettingsTests
     [Fact]
     public void DatabaseSettings_ShouldHaveCorrectSectionName()
     {
-        Assert.Equal("Database", DatabaseSettings.SectionName);
+        Assert.Equal("DatabaseSettings", DatabaseSettings.SectionName);
     }
 
     [Fact]
