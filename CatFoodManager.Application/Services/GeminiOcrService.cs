@@ -1,6 +1,10 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using CatFoodManager.Application.Interfaces;
 using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Twotwo.Agent.Interfaces;
 using Twotwo.Agent.Types;
@@ -19,24 +23,78 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         ".webp"
     };
 
+    private const string CacheKeyPrefix = "GeminiModels_";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(1);
+
     private readonly IGeminiAgentService _agentService;
     private readonly IRepository _repository;
     private readonly ILogger<GeminiOcrService> _logger;
+    private readonly IMemoryCache _cache;
 
     public GeminiOcrService(
         IGeminiAgentService agentService,
         IRepository repository,
-        ILogger<GeminiOcrService> logger)
+        ILogger<GeminiOcrService> logger,
+        IMemoryCache cache)
     {
         _agentService = agentService;
         _repository = repository;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<bool> ValidateModelAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Validating Gemini model");
         return await _agentService.ValidateModelAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ModelInfo>> GetModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = GetCacheKey(apiKey);
+
+        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<ModelInfo>? cachedModels))
+        {
+            _logger.LogInformation("Returning cached models for key: {CacheKey}", cacheKey);
+            return cachedModels!;
+        }
+
+        _logger.LogInformation("Getting available models from API");
+        var models = await _agentService.GetModelsAsync(cancellationToken);
+        var result = models.Select(m => new ModelInfo(m.Name, m.DisplayName)).ToList();
+
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSlidingExpiration(TimeSpan.FromMinutes(30));
+
+        _cache.Set(cacheKey, result, cacheOptions);
+        _logger.LogInformation("Cached {Count} models for key: {CacheKey}", result.Count, cacheKey);
+
+        return result;
+    }
+
+    public void ClearModelsCache(string? apiKey = null)
+    {
+        var cacheKey = GetCacheKey(apiKey);
+        _cache.Remove(cacheKey);
+        _logger.LogInformation("Cleared models cache for key: {CacheKey}", cacheKey);
+    }
+
+    private static string GetCacheKey(string? apiKey)
+    {
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            return $"{CacheKeyPrefix}default";
+        }
+
+        var hash = ComputeApiKeyHash(apiKey);
+        return $"{CacheKeyPrefix}{hash}";
+    }
+
+    private static string ComputeApiKeyHash(string apiKey)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
+        return Convert.ToHexString(bytes)[..16];
     }
 
     public async Task<IReadOnlyList<T>> ProcessPicturesAsync<T>(string folderPath, string promptText, CancellationToken cancellationToken = default)

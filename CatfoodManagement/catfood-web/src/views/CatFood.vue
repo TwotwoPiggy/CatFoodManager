@@ -4,7 +4,6 @@
       <template #header>
         <div class="card-header">
           <span>猫粮库存管理</span>
-          <el-button type="primary" :icon="Refresh" @click="handleSync">同步数据</el-button>
         </div>
       </template>
 
@@ -177,9 +176,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, RefreshRight } from '@element-plus/icons-vue'
+import { Search, RefreshRight } from '@element-plus/icons-vue'
 import { getCatFoods, updateCatFood, viewImage, waitForCefSharp } from '@/utils/bridge'
 import { ProductType } from '@/types'
 
@@ -263,10 +262,6 @@ const handleReset = () => {
   loadData()
 }
 
-const handleSync = () => {
-  ElMessage.info('同步功能开发中...')
-}
-
 const handleCellDblClick = (row: CatFoodRow, column: any) => {
   const field = column.property
   if (!field || field === 'Id' || field === 'BrandName' || field === 'PicturePath' || field === 'UpdatedAt') {
@@ -324,6 +319,10 @@ const handleViewImage = (row: CatFoodRow) => {
 
 onMounted(async () => {
   await waitForCefSharp()
+  loadData()
+})
+
+onActivated(() => {
   loadData()
 })
 </script>

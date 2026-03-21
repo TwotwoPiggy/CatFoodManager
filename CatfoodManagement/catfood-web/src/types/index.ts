@@ -55,6 +55,54 @@ export enum PlatformType {
   Kuaishou = 5
 }
 
+export enum TaskStatus {
+  Pending = 0,
+  Queued = 1,
+  Running = 2,
+  Completed = 3,
+  Failed = 4,
+  Cancelled = 5,
+  Retrying = 6
+}
+
+export enum TaskType {
+  ImageSync = 0,
+  ImageDelete = 1,
+  ImageMove = 2,
+  ImageProcess = 3
+}
+
+export interface TaskItem {
+  Id: number
+  Name: string
+  Type: TaskType
+  Status: TaskStatus
+  Description?: string
+  Parameters: string
+  Result?: string
+  ErrorMessage?: string
+  RetryCount: number
+  MaxRetries: number
+  StartedAt?: string
+  CompletedAt?: string
+  ScheduledAt?: string
+  Priority: number
+  ParentTaskId?: number
+  CreatedAt: string
+  UpdatedAt?: string
+}
+
+export interface TaskConfiguration {
+  Id: number
+  Name?: string
+  MaxConcurrentTasks: number
+  PollingIntervalSeconds: number
+  EnableScheduling: boolean
+  DefaultSchedule?: string
+  CreatedAt: string
+  UpdatedAt?: string
+}
+
 export interface PagedResult<T> {
   Data: T[]
   Total: number
@@ -77,10 +125,27 @@ export const ProductTypeLabels: Record<number, string> = {
 }
 
 export const PlatformTypeLabels: Record<number, string> = {
-  [PlatformType.None]: '未知',
-  [PlatformType.JD]: '京东',
-  [PlatformType.Taobao]: '淘宝',
-  [PlatformType.PDD]: '拼多多',
-  [PlatformType.Douyin]: '抖音',
-  [PlatformType.Kuaishou]: '快手'
+  [PlatformType.None]: 'None',
+  [PlatformType.JD]: 'JD',
+  [PlatformType.Taobao]: 'Taobao',
+  [PlatformType.PDD]: 'PDD',
+  [PlatformType.Douyin]: 'Douyin',
+  [PlatformType.Kuaishou]: 'Kuaishou'
+}
+
+export const TaskStatusLabels: Record<number, string> = {
+  [TaskStatus.Pending]: '待处理',
+  [TaskStatus.Queued]: '已入队',
+  [TaskStatus.Running]: '执行中',
+  [TaskStatus.Completed]: '已完成',
+  [TaskStatus.Failed]: '失败',
+  [TaskStatus.Cancelled]: '已取消',
+  [TaskStatus.Retrying]: '重试中'
+}
+
+export const TaskTypeLabels: Record<number, string> = {
+  [TaskType.ImageSync]: '图片同步',
+  [TaskType.ImageDelete]: '图片删除',
+  [TaskType.ImageMove]: '图片移动',
+  [TaskType.ImageProcess]: '图片处理'
 }

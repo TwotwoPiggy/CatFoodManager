@@ -4,6 +4,8 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import CatFood from '@/views/CatFood.vue'
 import BestPrice from '@/views/BestPrice.vue'
 import Brand from '@/views/Brand.vue'
+import Settings from '@/views/Settings.vue'
+import TaskManager from '@/views/TaskManager.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -29,6 +31,18 @@ const routes: RouteRecordRaw[] = [
         name: 'Brand',
         component: Brand,
         meta: { title: '品牌管理' }
+      },
+      {
+        path: 'tasks',
+        name: 'TaskManager',
+        component: TaskManager,
+        meta: { title: '任务管理' }
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: Settings,
+        meta: { title: '系统设置' }
       }
     ]
   }

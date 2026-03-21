@@ -24,13 +24,33 @@
             <el-icon><OfficeBuilding /></el-icon>
             <span>品牌管理</span>
           </el-menu-item>
+          <el-menu-item index="/tasks">
+            <el-icon><List /></el-icon>
+            <span>任务管理</span>
+          </el-menu-item>
+          <el-menu-item index="/settings">
+            <el-icon><Setting /></el-icon>
+            <span>系统设置</span>
+          </el-menu-item>
         </el-menu>
+        <div class="header-actions">
+          <el-tooltip :content="themeStore.mode === 'light' ? '切换到暗色模式' : '切换到亮色模式'" placement="bottom">
+            <el-button circle @click="themeStore.toggleTheme()">
+              <el-icon :size="18">
+                <Sunny v-if="themeStore.mode === 'dark'" />
+                <Moon v-else />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
       </div>
     </el-header>
     <el-main class="main">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
-          <component :is="Component" />
+          <keep-alive>
+            <component :is="Component" />
+          </keep-alive>
         </transition>
       </router-view>
     </el-main>
@@ -38,31 +58,44 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Avatar, Food, PriceTag, OfficeBuilding } from '@element-plus/icons-vue'
+import { Avatar, Food, PriceTag, OfficeBuilding, Setting, Sunny, Moon, List } from '@element-plus/icons-vue'
+import { useThemeStore } from '@/stores/theme'
+import { useHotkeys } from '@/composables/useHotkeys'
 
 const router = useRouter()
 const route = useRoute()
+const themeStore = useThemeStore()
+const { registerHotkeys, unregisterHotkeys } = useHotkeys()
 
 const activeMenu = computed(() => route.path)
 
 const handleMenuSelect = (index: string) => {
   router.push(index)
 }
+
+onMounted(() => {
+  registerHotkeys()
+})
+
+onUnmounted(() => {
+  unregisterHotkeys()
+})
 </script>
 
 <style scoped lang="scss">
 .main-layout {
   height: 100vh;
-  background-color: #f5f7fa;
+  background-color: var(--bg-color);
 }
 
 .header {
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--header-bg);
+  box-shadow: var(--box-shadow);
   padding: 0 20px;
   z-index: 100;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .header-content {
@@ -75,13 +108,20 @@ const handleMenuSelect = (index: string) => {
   display: flex;
   align-items: center;
   margin-right: 40px;
-  color: #409eff;
+  color: var(--el-color-primary);
   font-size: 18px;
   font-weight: bold;
 
   .title {
     margin-left: 10px;
   }
+}
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .el-menu {

@@ -1,4 +1,5 @@
 using CatFoodManager.Application.Extensions;
+using CatFoodManager.Application.Interfaces;
 using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Repositories;
@@ -8,6 +9,7 @@ using CatFoodManager.Infrastructure.Extensions;
 using CatFoodManager.ViewModels;
 using CommonTools;
 using CommonTools.Database;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +17,9 @@ using Microsoft.Extensions.Options;
 using OcrApi;
 using Twotwo.Agent.Extensions;
 using Twotwo.Agent.Interfaces;
+using IApplicationGeminiOcrService = CatFoodManager.Application.Interfaces.IGeminiOcrService;
+using ICoreGeminiOcrService = CatFoodManager.Core.Interfaces.IGeminiOcrService;
+using ICorePlatformRegExpService = CatFoodManager.Core.Interfaces.IPlatformRegExpService;
 
 namespace CatFoodManager
 {
@@ -75,12 +80,21 @@ namespace CatFoodManager
                     .AddScoped<IService<CatFood>, CatFoodService>(serviceProvider => new CatFoodService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
                     .AddScoped<IService<Factory>, FactoryService>(serviceProvider => new FactoryService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
                     .AddScoped<IService<BestPrice>, LowestPriceService>(serviceProvider => new LowestPriceService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
-                    .AddScoped<IPlatformRegExpService, PlatformRegExpService>(serviceProvider => new PlatformRegExpService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
-                    .AddScoped<IGeminiOcrService, GeminiOcrService>(sp =>
+                    .AddScoped<ICorePlatformRegExpService, PlatformRegExpService>(serviceProvider => new PlatformRegExpService(serviceProvider.GetRequiredService<IRepository>(), needMigrate))
+                    .AddScoped<ICoreGeminiOcrService, CatFoodManager.Core.Services.GeminiOcrService>(sp =>
                     {
                         var repo = sp.GetRequiredService<IRepository>();
                         var agentService = sp.GetRequiredService<IGeminiAgentService>();
-                        return new GeminiOcrService(repo, agentService, needMigrate);
+                        return new CatFoodManager.Core.Services.GeminiOcrService(repo, agentService, needMigrate);
+                    })
+                    .AddSingleton<IMemoryCache, MemoryCache>()
+                    .AddScoped<IApplicationGeminiOcrService, CatFoodManager.Application.Services.GeminiOcrService>(sp =>
+                    {
+                        var agentService = sp.GetRequiredService<IGeminiAgentService>();
+                        var repository = sp.GetRequiredService<IRepository>();
+                        var logger = sp.GetRequiredService<ILogger<CatFoodManager.Application.Services.GeminiOcrService>>();
+                        var cache = sp.GetRequiredService<IMemoryCache>();
+                        return new CatFoodManager.Application.Services.GeminiOcrService(agentService, repository, logger, cache);
                     });
 
             ServiceProvider = services.BuildServiceProvider();

@@ -1,0 +1,181 @@
+@use 'element-plus/theme-chalk/src/mixins/config.scss' as *;
+
+:root {
+  --bg-color: #ffffff;
+  --text-color: #303133;
+  --text-color-secondary: #909399;
+  --border-color: #dcdfe6;
+  --fill-color: #f0f2f5;
+  --fill-color-light: #f5f7fa;
+  --box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  --header-bg: #ffffff;
+  --card-bg: #ffffff;
+  --table-bg: #ffffff;
+  --table-row-hover-bg: #f5f7fa;
+  --input-bg: #ffffff;
+}
+
+[data-theme='dark'] {
+  --bg-color: #141414;
+  --text-color: #e5eaf3;
+  --text-color-secondary: #a3a6ad;
+  --border-color: #4c4d4f;
+  --fill-color: #1d1e1f;
+  --fill-color-light: #262727;
+  --box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.3);
+  --header-bg: #1d1e1f;
+  --card-bg: #1d1e1f;
+  --table-bg: #1d1e1f;
+  --table-row-hover-bg: #262727;
+  --input-bg: #141414;
+
+  color-scheme: dark;
+}
+
+html.dark {
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--fill-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-color-secondary);
+}
+
+.el-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  box-shadow: var(--box-shadow);
+}
+
+.el-table {
+  --el-table-bg-color: var(--table-bg);
+  --el-table-tr-bg-color: var(--table-bg);
+  --el-table-row-hover-bg-color: var(--table-row-hover-bg);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-color);
+  --el-table-header-bg-color: var(--fill-color);
+}
+
+.el-input__wrapper {
+  background-color: var(--input-bg);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--text-color-secondary) inset;
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+
+.el-select__wrapper {
+  background-color: var(--input-bg);
+}
+
+.el-dialog {
+  --el-dialog-bg-color: var(--card-bg);
+  --el-dialog-title-font-size: 18px;
+}
+
+.el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--text-color);
+  --el-menu-hover-bg-color: var(--fill-color-light);
+}
+
+.el-menu-item.is-active {
+  color: var(--el-color-primary);
+}
+
+.el-pagination {
+  --el-pagination-bg-color: var(--fill-color);
+  --el-pagination-button-bg-color: var(--fill-color);
+  --el-pagination-hover-color: var(--el-color-primary);
+}
+
+.el-form-item__label {
+  color: var(--text-color);
+}
+
+.el-tabs__item {
+  color: var(--text-color-secondary);
+}
+
+.el-tabs__item.is-active {
+  color: var(--el-color-primary);
+}
+
+.el-tabs__nav-wrap::after {
+  background-color: var(--border-color);
+}
+
+.el-switch.is-dark .el-switch__core {
+  background-color: var(--fill-color);
+}
+
+.el-checkbox__label {
+  color: var(--text-color);
+}
+
+.el-radio__label {
+  color: var(--text-color);
+}
+
+.el-textarea__inner {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--text-color-secondary) inset;
+}
+
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+
+.el-date-editor {
+  --el-input-bg-color: var(--input-bg);
+}
+
+.el-picker-panel {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+.el-picker-panel__footer {
+  background-color: var(--fill-color-light);
+  border-top-color: var(--border-color);
+}
+
+.el-popconfirm__main {
+  color: var(--text-color);
+}
+
+.page-container {
+  background-color: var(--bg-color);
+}
+
+.search-bar {
+  .el-input__wrapper {
+    background-color: var(--input-bg);
+  }
+}
+
+.editable-cell:hover {
+  background-color: var(--fill-color-light);
+}

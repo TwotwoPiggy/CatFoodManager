@@ -4,7 +4,10 @@
       <template #header>
         <div class="card-header">
           <span>最佳价格管理</span>
-          <el-button type="primary" :icon="Plus" @click="handleAdd">新增记录</el-button>
+          <div class="header-actions">
+            <el-button type="primary" :icon="Refresh" @click="handleSync">同步数据</el-button>
+            <el-button type="success" :icon="Plus" @click="handleAdd">新增记录</el-button>
+          </div>
         </div>
       </template>
 
@@ -38,8 +41,11 @@
             <el-input
               v-if="row.editing === 'Name'"
               v-model="row.editValue"
+              type="textarea"
+              :rows="2"
+              :autosize="{ minRows: 2, maxRows: 4 }"
               size="small"
-              @keyup.enter="handleSaveEdit(row, 'Name')"
+              @keyup.enter.ctrl="handleSaveEdit(row, 'Name')"
               @blur="handleSaveEdit(row, 'Name')"
             />
             <span v-else class="editable-cell">{{ row.Name }}</span>
@@ -273,16 +279,48 @@
     <el-dialog v-model="imageDialogVisible" title="图片查看" width="600px">
       <img :src="currentImageUrl" style="width: 100%" />
     </el-dialog>
+
+    <el-dialog v-model="syncDialogVisible" title="OCR 同步" width="600px">
+      <div class="sync-content">
+        <el-form :model="syncForm" label-width="120px">
+          <el-form-item label="图片文件夹">
+            <el-select v-model="syncForm.folderPath" placeholder="请选择图片文件夹" style="width: 100%">
+              <el-option
+                v-for="option in folderOptions"
+                :key="option.value"
+                :label="`${option.label} (${option.value})`"
+                :value="option.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="提示词">
+            <el-input
+              v-model="syncForm.promptText"
+              type="textarea"
+              :rows="5"
+              placeholder="请输入提示词"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="syncDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="syncing" @click="handleStartSync">
+          开始同步
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, onActivated, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, RefreshRight, Plus } from '@element-plus/icons-vue'
-import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, viewImage, waitForCefSharp } from '@/utils/bridge'
-import { ProductType, PlatformType } from '@/types'
+import { Search, RefreshRight, Plus, Refresh } from '@element-plus/icons-vue'
+import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, viewImage, waitForCefSharp, syncFromPictures, getSettings, createTask } from '@/utils/bridge'
+import { ProductType, PlatformType, TaskType } from '@/types'
 
+// 最佳价格记录的数据结构
 interface BestPriceRow {
   Id: number
   Name: string
@@ -300,16 +338,39 @@ interface BestPriceRow {
   editValue?: any
 }
 
+// 表格相关状态
 const loading = ref(false)
 const searchText = ref('')
 const currentPage = ref(1)
 const pageSize = ref(50)
 const total = ref(0)
 const tableData = ref<BestPriceRow[]>([])
+
+// 对话框相关状态
 const addDialogVisible = ref(false)
 const imageDialogVisible = ref(false)
 const currentImageUrl = ref('')
+const syncDialogVisible = ref(false)
+const syncing = ref(false)
 
+// 平台文件夹配置，从 Settings 页面获取
+const platformFolders = ref<Record<string, string>>({})
+
+// OCR 同步表单
+const syncForm = reactive({
+  folderPath: '',
+  promptText: ''
+})
+
+// 将平台文件夹对象转换为下拉选项数组
+const folderOptions = computed(() => {
+  return Object.entries(platformFolders.value).map(([name, path]) => ({
+    label: name,
+    value: path
+  }))
+})
+
+// 新增记录表单
 const addForm = reactive({
   Name: '',
   Type: ProductType.CatFood,
@@ -323,6 +384,7 @@ const addForm = reactive({
   PurchasedAt: null as string | null
 })
 
+// 产品类型映射
 const ProductTypeLabels = {
   [ProductType.CatFood]: '猫粮',
   [ProductType.CatSnack]: '零食',
@@ -331,6 +393,7 @@ const ProductTypeLabels = {
   [ProductType.Others]: '其他'
 }
 
+// 平台类型映射
 const PlatformTypeLabels = {
   [PlatformType.None]: '未知',
   [PlatformType.JD]: '京东',
@@ -340,19 +403,23 @@ const PlatformTypeLabels = {
   [PlatformType.Kuaishou]: '快手'
 }
 
+// 获取产品类型显示名称
 const getProductTypeLabel = (type: ProductType) => {
   return ProductTypeLabels[type] || '未知'
 }
 
+// 获取平台显示名称
 const getPlatformLabel = (platform: PlatformType) => {
   return PlatformTypeLabels[platform] || '未知'
 }
 
+// 格式化日期
 const formatDate = (date: string) => {
   if (!date) return '-'
   return date.split('T')[0]
 }
 
+// 加载表格数据
 const loadData = async () => {
   loading.value = true
   try {
@@ -377,17 +444,77 @@ const loadData = async () => {
   }
 }
 
+// 搜索
 const handleSearch = () => {
   currentPage.value = 1
   loadData()
 }
 
+// 重置搜索
 const handleReset = () => {
   searchText.value = ''
   currentPage.value = 1
   loadData()
 }
 
+// 打开同步对话框，每次打开时重新加载设置以实现热加载
+const handleSync = async () => {
+  await loadSettings()
+  syncDialogVisible.value = true
+}
+
+// 加载设置，获取平台文件夹配置
+const loadSettings = async () => {
+  try {
+    const result = await getSettings()
+    if (result.Success && result.Data?.App?.PlatformFolders) {
+      platformFolders.value = result.Data.App.PlatformFolders
+      // 如果有文件夹选项且当前未选择，默认选中第一个
+      if (folderOptions.value.length > 0 && !syncForm.folderPath) {
+        syncForm.folderPath = folderOptions.value[0].value
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load settings:', error)
+  }
+}
+
+// 开始 OCR 同步 - 创建任务
+const handleStartSync = async () => {
+  if (!syncForm.folderPath) {
+    ElMessage.warning('请先选择图片文件夹')
+    return
+  }
+  
+  syncing.value = true
+  try {
+    const parameters = JSON.stringify({
+      folderPath: syncForm.folderPath,
+      promptText: syncForm.promptText
+    })
+    
+    const result = await createTask(
+      TaskType.ImageSync,
+      `同步 ${syncForm.folderPath.split(/[/\\]/).pop() || syncForm.folderPath}`,
+      parameters,
+      `从文件夹同步图片数据`
+    )
+    
+    if (result.Success) {
+      ElMessage.success('任务已创建，请前往任务管理查看进度')
+      syncDialogVisible.value = false
+    } else {
+      ElMessage.error(result.Message || '创建任务失败')
+    }
+  } catch (error) {
+    ElMessage.error('创建任务时发生错误')
+    console.error(error)
+  } finally {
+    syncing.value = false
+  }
+}
+
+// 打开新增对话框，重置表单
 const handleAdd = () => {
   addForm.Name = ''
   addForm.Type = ProductType.CatFood
@@ -402,6 +529,7 @@ const handleAdd = () => {
   addDialogVisible.value = true
 }
 
+// 保存新增记录
 const handleSaveAdd = async () => {
   if (!addForm.Name.trim()) {
     ElMessage.warning('请输入名称')
@@ -423,6 +551,7 @@ const handleSaveAdd = async () => {
   }
 }
 
+// 双击单元格进入编辑模式
 const handleCellDblClick = (row: BestPriceRow, column: any) => {
   const field = column.property
   if (!field || field === 'Id' || field === 'PicturePath') {
@@ -433,12 +562,14 @@ const handleCellDblClick = (row: BestPriceRow, column: any) => {
   row.editValue = row[field as keyof BestPriceRow]
 }
 
+// 保存单元格编辑
 const handleSaveEdit = async (row: BestPriceRow, field: string) => {
   if (row.editing !== field) return
   
   const oldValue = row[field as keyof BestPriceRow]
   const newValue = row.editValue
   
+  // 值未变化，直接退出编辑模式
   if (oldValue === newValue) {
     row.editing = undefined
     row.editValue = undefined
@@ -465,6 +596,7 @@ const handleSaveEdit = async (row: BestPriceRow, field: string) => {
   }
 }
 
+// 删除记录
 const handleDelete = async (row: BestPriceRow) => {
   try {
     const result = await deleteBestPrice(row.Id)
@@ -480,6 +612,7 @@ const handleDelete = async (row: BestPriceRow) => {
   }
 }
 
+// 查看图片
 const handleViewImage = (picturePath: string) => {
   if (picturePath.startsWith('http')) {
     currentImageUrl.value = picturePath
@@ -489,12 +622,19 @@ const handleViewImage = (picturePath: string) => {
   }
 }
 
+// 上传图片（待开发）
 const handleUploadImage = (row: BestPriceRow) => {
   ElMessage.info('上传功能开发中...')
 }
 
+// 组件挂载时初始化
 onMounted(async () => {
   await waitForCefSharp()
+  await Promise.all([loadData(), loadSettings()])
+})
+
+// 组件激活时刷新数据（keep-alive）
+onActivated(() => {
   loadData()
 })
 </script>
@@ -521,5 +661,20 @@ onMounted(async () => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sync-content {
+  padding: 10px 0;
 }
 </style>

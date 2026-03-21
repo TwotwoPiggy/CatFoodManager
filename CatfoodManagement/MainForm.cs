@@ -1,36 +1,26 @@
 using CefSharp;
 using CefSharp.WinForms;
 using CatfoodManagement.Services;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Infrastructure.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CatfoodManagement
 {
     public partial class MainForm : Form
     {
         private readonly JavaScriptBridge _javaScriptBridge;
+        private readonly IServiceProvider _serviceProvider;
         private ChromiumWebBrowser _browser = null!;
 
-        public MainForm(JavaScriptBridge javaScriptBridge)
+        public MainForm(
+            JavaScriptBridge javaScriptBridge,
+            IServiceProvider serviceProvider)
         {
             _javaScriptBridge = javaScriptBridge;
+            _serviceProvider = serviceProvider;
             InitializeComponent();
-#if DEBUG
-
-            InitMenu();
-#endif
             InitBrowser();
-        }
-
-        private void InitMenu()
-        {
-            var menuStrip = new MenuStrip();
-            var toolsMenu = new ToolStripMenuItem("工具(&T)");
-            var devToolsItem = new ToolStripMenuItem("开发者工具(&D)", null, (s, e) => _browser.ShowDevTools())
-            {
-                ShortcutKeys = Keys.F12
-            };
-            toolsMenu.DropDownItems.Add(devToolsItem);
-            menuStrip.Items.Add(toolsMenu);
-            Controls.Add(menuStrip);
         }
 
         private void InitBrowser()
@@ -62,9 +52,19 @@ namespace CatfoodManagement
             {
                 if (e.Frame.IsMain)
                 {
+                    using var scope = _serviceProvider.CreateScope();
+                    var databaseInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+                    var ocrPromptService = scope.ServiceProvider.GetRequiredService<IOcrPromptService>();
+                    
+                    await databaseInitializer.InitializeAsync();
+                    await ocrPromptService.InitializeDefaultPromptAsync();
                     await _javaScriptBridge.InitializeAsync(_browser);
                 }
             };
+
+#if DEBUG
+            _browser.MenuHandler = new DevToolsContextMenuHandler(_browser);
+#endif
 
             Controls.Add(_browser);
         }
@@ -86,4 +86,40 @@ namespace CatfoodManagement
             return response.Success ? response.Result?.ToString() ?? string.Empty : string.Empty;
         }
     }
+
+#if DEBUG
+    internal class DevToolsContextMenuHandler : IContextMenuHandler
+    {
+        private const int ShowDevTools = 26501;
+        private readonly ChromiumWebBrowser _browser;
+
+        public DevToolsContextMenuHandler(ChromiumWebBrowser browser)
+        {
+            _browser = browser;
+        }
+
+        public void OnBeforeContextMenu(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IContextMenuParams parameters, IMenuModel model)
+        {
+            model.AddItem(CefMenuCommand.CustomFirst, "开发者工具(&D)");
+            model.SetAcceleratorAt(model.Count - 1, (int)Keys.F12, false, false, false);
+        }
+
+        public bool OnContextMenuCommand(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IContextMenuParams parameters, CefMenuCommand commandId, CefEventFlags eventFlags)
+        {
+            if (commandId == CefMenuCommand.CustomFirst)
+            {
+                _browser.ShowDevTools();
+                return true;
+            }
+            return false;
+        }
+
+        public void OnContextMenuDismissed(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame) { }
+
+        public bool RunContextMenu(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IContextMenuParams parameters, IMenuModel model, IRunContextMenuCallback callback)
+        {
+            return false;
+        }
+    }
+#endif
 }

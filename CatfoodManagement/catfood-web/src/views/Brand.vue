@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import { getBrands, addBrand, updateBrand, deleteBrand, waitForCefSharp } from '@/utils/bridge'
@@ -191,6 +191,10 @@ const handleAdd = () => {
 
 onMounted(async () => {
   await waitForCefSharp()
+  loadData()
+})
+
+onActivated(() => {
   loadData()
 })
 </script>

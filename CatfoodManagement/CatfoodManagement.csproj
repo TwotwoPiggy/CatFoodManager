@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- 项目基本配置 -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -12,6 +13,7 @@
     <ApplicationIcon>icon\nya.ico</ApplicationIcon>
   </PropertyGroup>
 
+  <!-- NuGet 包引用 -->
   <ItemGroup>
     <PackageReference Include="CefSharp.WinForms.NETCore" Version="145.0.260" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.5" />
@@ -20,6 +22,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
+  <!-- 项目引用 -->
   <ItemGroup>
     <ProjectReference Include="..\CatFoodManager.Core\CatFoodManager.Core.csproj" />
     <ProjectReference Include="..\CatFoodManager.Domain\CatFoodManager.Domain.csproj" />
@@ -27,6 +30,7 @@
     <ProjectReference Include="..\CatFoodManager.Infrastructure\CatFoodManager.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- 需要复制到输出目录的资源文件 -->
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -35,5 +39,19 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- 
+    前端自动构建任务
+    在项目构建前自动执行 npm run build 构建前端项目
+    可通过设置 SkipFrontendBuild=true 跳过前端构建
+    示例: dotnet build /p:SkipFrontendBuild=true
+  -->
+  <Target Name="BuildFrontend" BeforeTargets="BeforeBuild" Condition="'$(SkipFrontendBuild)' != 'true'">
+    <Message Text="Building frontend..." Importance="high" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)\catfood-web" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="FrontendBuildOutput" />
+    </Exec>
+    <Message Text="Frontend build completed" Importance="high" />
+  </Target>
 
 </Project>

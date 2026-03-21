@@ -16,7 +16,7 @@ public class AppSettingsTests
     {
         var settings = new AppSettings();
 
-        Assert.Equal(string.Empty, settings.PictureFolders);
+        Assert.Empty(settings.PlatformFolders);
         Assert.Equal(string.Empty, settings.TessdataPath);
     }
 
@@ -25,11 +25,16 @@ public class AppSettingsTests
     {
         var settings = new AppSettings
         {
-            PictureFolders = "C:\\Pictures",
+            PlatformFolders = new Dictionary<string, string>
+            {
+                { "京东", "C:\\JDPictures" },
+                { "淘宝", "C:\\TaobaoPictures" }
+            },
             TessdataPath = "C:\\Tessdata"
         };
 
-        Assert.Equal("C:\\Pictures", settings.PictureFolders);
+        Assert.Equal("C:\\JDPictures", settings.PlatformFolders["京东"]);
+        Assert.Equal("C:\\TaobaoPictures", settings.PlatformFolders["淘宝"]);
         Assert.Equal("C:\\Tessdata", settings.TessdataPath);
     }
 }

@@ -159,7 +159,8 @@ public class ServiceCollectionExtensionsTests : IDisposable
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["AppSettings:PictureFolders"] = "/path/to/pictures",
+                ["AppSettings:PlatformFolders:京东"] = "/path/to/jd",
+                ["AppSettings:PlatformFolders:淘宝"] = "/path/to/taobao",
                 ["AppSettings:TessdataPath"] = "/path/to/tessdata"
             })
             .Build();
@@ -170,7 +171,8 @@ public class ServiceCollectionExtensionsTests : IDisposable
         var options = serviceProvider.GetService<IOptions<AppSettings>>();
 
         Assert.NotNull(options);
-        Assert.Equal("/path/to/pictures", options.Value.PictureFolders);
+        Assert.Equal("/path/to/jd", options.Value.PlatformFolders["京东"]);
+        Assert.Equal("/path/to/taobao", options.Value.PlatformFolders["淘宝"]);
         Assert.Equal("/path/to/tessdata", options.Value.TessdataPath);
     }
 

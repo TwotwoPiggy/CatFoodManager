@@ -4,7 +4,9 @@ using CatFoodManager.Infrastructure.Caching;
 using CatFoodManager.Infrastructure.Configuration;
 using CatFoodManager.Infrastructure.Persistence;
 using CatFoodManager.Infrastructure.Repositories;
+using CatFoodManager.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace CatFoodManager.Infrastructure.Extensions;
@@ -21,6 +23,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICacheService, MemoryCacheService>();
 
         services.AddScoped(typeof(IRepository<>), typeof(SQLiteRepository<>));
+        services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
+
+        services.AddHostedService<TaskBackgroundService>();
 
         return services;
     }
