@@ -1,10 +1,10 @@
-using CatFoodManager.Application.Services;
 using CatFoodManager.Domain.Entities;
 using CatFoodManager.Domain.Enums;
 using CatFoodManager.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using AppTaskScheduler = CatFoodManager.Application.Services.TaskScheduler;
 
 namespace CatFoodManager.Tests.Application.Services;
 
@@ -12,16 +12,16 @@ public class TaskSchedulerTests
 {
     private readonly Mock<IRepository<TaskItem>> _taskRepositoryMock;
     private readonly Mock<IRepository<TaskConfiguration>> _configRepositoryMock;
-    private readonly Mock<ILogger<TaskScheduler>> _loggerMock;
-    private readonly TaskScheduler _scheduler;
+    private readonly Mock<ILogger<AppTaskScheduler>> _loggerMock;
+    private readonly AppTaskScheduler _scheduler;
 
     public TaskSchedulerTests()
     {
         _taskRepositoryMock = new Mock<IRepository<TaskItem>>();
         _configRepositoryMock = new Mock<IRepository<TaskConfiguration>>();
-        _loggerMock = new Mock<ILogger<TaskScheduler>>();
+        _loggerMock = new Mock<ILogger<AppTaskScheduler>>();
 
-        _scheduler = new TaskScheduler(
+        _scheduler = new AppTaskScheduler(
             _taskRepositoryMock.Object,
             _configRepositoryMock.Object,
             _loggerMock.Object);

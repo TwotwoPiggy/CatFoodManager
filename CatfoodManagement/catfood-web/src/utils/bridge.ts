@@ -349,7 +349,6 @@ export interface AppSettings {
     ConnectionString: string
   }
   App: {
-    TessdataPath: string
     PlatformFolders: Record<string, string>
   }
 }

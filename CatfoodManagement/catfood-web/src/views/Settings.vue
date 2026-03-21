@@ -80,7 +80,7 @@
                   @change="handlePromptSelect"
                 >
                   <el-option
-                    v-for="prompt in ocrPrompts"
+                    v-for="prompt in appConfigStore.ocrPrompts"
                     :key="prompt.Id"
                     :label="prompt.Name"
                     :value="prompt.Id"
@@ -215,6 +215,9 @@ import {
   type OcrPrompt
 } from '@/utils/bridge'
 import { PlatformType, PlatformTypeLabels } from '@/types'
+import { useAppConfigStore } from '@/stores/appConfig'
+
+const appConfigStore = useAppConfigStore()
 
 const activeTab = ref('ai')
 const modelValid = ref(false)
@@ -225,7 +228,6 @@ const loadingModels = ref(false)
 const models = ref<ModelInfo[]>([])
 const ocrFolderPath = ref('')
 const promptText = ref('')
-const ocrPrompts = ref<OcrPrompt[]>([])
 const selectedPromptId = ref<number | null>(null)
 const promptDialogVisible = ref(false)
 const promptForm = reactive({
@@ -238,7 +240,7 @@ const promptForm = reactive({
 const isEditingPrompt = ref(false)
 
 const isOnlyDefaultPrompt = computed(() => {
-  return ocrPrompts.value.length === 1 && ocrPrompts.value[0].IsDefault
+  return appConfigStore.ocrPrompts.length === 1 && appConfigStore.ocrPrompts[0].IsDefault
 })
 
 const platforms = Object.entries(PlatformTypeLabels)
@@ -261,7 +263,6 @@ const settingsForm = reactive<AppSettings>({
     ConnectionString: './data/catfood.db'
   },
   App: {
-    TessdataPath: 'tessdata',
     PlatformFolders: {}
   }
 })
@@ -285,7 +286,6 @@ const loadSettings = async () => {
         ConnectionString: result.Data.Database?.ConnectionString || './data/catfood.db'
       }
       settingsForm.App = {
-        TessdataPath: result.Data.App?.TessdataPath || 'tessdata',
         PlatformFolders: result.Data.App?.PlatformFolders || {}
       }
     }
@@ -399,23 +399,15 @@ const handleSyncFromPictures = async () => {
 }
 
 const loadOcrPrompts = async () => {
-  try {
-    const result = await getOcrPrompts()
-    if (result.Success && result.Data) {
-      ocrPrompts.value = result.Data
-      if (ocrPrompts.value.length > 0 && !selectedPromptId.value) {
-        const defaultPrompt = ocrPrompts.value.find(p => p.IsDefault) || ocrPrompts.value[0]
-        selectedPromptId.value = defaultPrompt.Id
-        promptText.value = defaultPrompt.Content
-      }
-    }
-  } catch (error) {
-    console.error('Failed to load OCR prompts:', error)
+  await appConfigStore.fetchOcrPrompts()
+  if (appConfigStore.ocrPrompts.length > 0 && !selectedPromptId.value) {
+    selectedPromptId.value = appConfigStore.defaultPrompt?.Id || null
+    promptText.value = appConfigStore.defaultPromptContent
   }
 }
 
 const handlePromptSelect = (id: number) => {
-  const prompt = ocrPrompts.value.find(p => p.Id === id)
+  const prompt = appConfigStore.ocrPrompts.find(p => p.Id === id)
   if (prompt) {
     promptText.value = prompt.Content
   }
@@ -434,7 +426,7 @@ const handleCreatePrompt = () => {
 const handleEditPrompt = () => {
   if (!selectedPromptId.value) return
   
-  const prompt = ocrPrompts.value.find(p => p.Id === selectedPromptId.value)
+  const prompt = appConfigStore.ocrPrompts.find(p => p.Id === selectedPromptId.value)
   if (prompt) {
     isEditingPrompt.value = true
     promptForm.Id = prompt.Id
@@ -459,7 +451,7 @@ const handleDeletePrompt = async () => {
     const result = await deleteOcrPrompt(selectedPromptId.value)
     if (result.Success) {
       ElMessage.success('删除成功')
-      await loadOcrPrompts()
+      await appConfigStore.fetchOcrPrompts(true)
       selectedPromptId.value = null
       promptText.value = ''
     } else {
@@ -502,7 +494,7 @@ const handleSavePrompt = async () => {
     if (result.Success) {
       ElMessage.success(isEditingPrompt.value ? '更新成功' : '创建成功')
       promptDialogVisible.value = false
-      await loadOcrPrompts()
+      await appConfigStore.fetchOcrPrompts(true)
       if (result.Data) {
         selectedPromptId.value = result.Data.Id
         promptText.value = result.Data.Content
@@ -521,6 +513,7 @@ onMounted(async () => {
   await loadSettings()
   await loadModels()
   await loadOcrPrompts()
+  appConfigStore.clearCache()
 })
 </script>
 

@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>最佳价格管理</span>
           <div class="header-actions">
-            <el-button type="primary" :icon="Refresh" @click="handleSync">同步数据</el-button>
+            <el-button type="primary" :icon="Refresh" @click="handleSync">AI同步数据</el-button>
             <el-button type="success" :icon="Plus" @click="handleAdd">新增记录</el-button>
           </div>
         </div>
@@ -280,25 +280,44 @@
       <img :src="currentImageUrl" style="width: 100%" />
     </el-dialog>
 
-    <el-dialog v-model="syncDialogVisible" title="OCR 同步" width="600px">
+    <el-dialog v-model="syncDialogVisible" title="OCR 同步" width="700px" align-center>
       <div class="sync-content">
         <el-form :model="syncForm" label-width="120px">
           <el-form-item label="图片文件夹">
             <el-select v-model="syncForm.folderPath" placeholder="请选择图片文件夹" style="width: 100%">
               <el-option
-                v-for="option in folderOptions"
+                v-for="option in appConfigStore.folderOptions"
                 :key="option.value"
                 :label="`${option.label} (${option.value})`"
                 :value="option.value"
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="提示词">
+          <el-form-item label="提示词模板">
+            <el-select 
+              v-model="selectedPromptId" 
+              placeholder="选择提示词模板" 
+              style="width: 100%"
+              @change="handlePromptSelect"
+            >
+              <el-option
+                v-for="prompt in appConfigStore.ocrPrompts"
+                :key="prompt.Id"
+                :label="prompt.Name"
+                :value="prompt.Id"
+              >
+                <span>{{ prompt.Name }}</span>
+                <el-tag v-if="prompt.IsDefault" type="success" size="small" style="margin-left: 8px">默认</el-tag>
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="提示词内容">
             <el-input
               v-model="syncForm.promptText"
               type="textarea"
-              :rows="5"
-              placeholder="请输入提示词"
+              :rows="10"
+              readonly
+              placeholder="请先选择提示词模板"
             />
           </el-form-item>
         </el-form>
@@ -317,8 +336,9 @@
 import { ref, onMounted, onActivated, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, RefreshRight, Plus, Refresh } from '@element-plus/icons-vue'
-import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, viewImage, waitForCefSharp, syncFromPictures, getSettings, createTask } from '@/utils/bridge'
+import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, viewImage, waitForCefSharp, createTask } from '@/utils/bridge'
 import { ProductType, PlatformType, TaskType } from '@/types'
+import { useAppConfigStore } from '@/stores/appConfig'
 
 // 最佳价格记录的数据结构
 interface BestPriceRow {
@@ -353,8 +373,8 @@ const currentImageUrl = ref('')
 const syncDialogVisible = ref(false)
 const syncing = ref(false)
 
-// 平台文件夹配置，从 Settings 页面获取
-const platformFolders = ref<Record<string, string>>({})
+// 使用 appConfig store
+const appConfigStore = useAppConfigStore()
 
 // OCR 同步表单
 const syncForm = reactive({
@@ -362,13 +382,8 @@ const syncForm = reactive({
   promptText: ''
 })
 
-// 将平台文件夹对象转换为下拉选项数组
-const folderOptions = computed(() => {
-  return Object.entries(platformFolders.value).map(([name, path]) => ({
-    label: name,
-    value: path
-  }))
-})
+// 选中的 prompt ID
+const selectedPromptId = ref<number | null>(null)
 
 // 新增记录表单
 const addForm = reactive({
@@ -459,23 +474,22 @@ const handleReset = () => {
 
 // 打开同步对话框，每次打开时重新加载设置以实现热加载
 const handleSync = async () => {
-  await loadSettings()
+  await appConfigStore.fetchAll()
+  if (appConfigStore.folderOptions.length > 0 && !syncForm.folderPath) {
+    syncForm.folderPath = appConfigStore.folderOptions[0].value
+  }
+  if (!selectedPromptId.value && appConfigStore.defaultPrompt) {
+    selectedPromptId.value = appConfigStore.defaultPrompt.Id
+    syncForm.promptText = appConfigStore.defaultPromptContent
+  }
   syncDialogVisible.value = true
 }
 
-// 加载设置，获取平台文件夹配置
-const loadSettings = async () => {
-  try {
-    const result = await getSettings()
-    if (result.Success && result.Data?.App?.PlatformFolders) {
-      platformFolders.value = result.Data.App.PlatformFolders
-      // 如果有文件夹选项且当前未选择，默认选中第一个
-      if (folderOptions.value.length > 0 && !syncForm.folderPath) {
-        syncForm.folderPath = folderOptions.value[0].value
-      }
-    }
-  } catch (error) {
-    console.error('Failed to load settings:', error)
+// 选择 prompt 时更新 promptText
+const handlePromptSelect = (id: number) => {
+  const prompt = appConfigStore.ocrPrompts.find(p => p.Id === id)
+  if (prompt) {
+    syncForm.promptText = prompt.Content
   }
 }
 
@@ -630,7 +644,7 @@ const handleUploadImage = (row: BestPriceRow) => {
 // 组件挂载时初始化
 onMounted(async () => {
   await waitForCefSharp()
-  await Promise.all([loadData(), loadSettings()])
+  await Promise.all([loadData(), appConfigStore.fetchAll()])
 })
 
 // 组件激活时刷新数据（keep-alive）

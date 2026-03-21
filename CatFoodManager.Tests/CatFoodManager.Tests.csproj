@@ -32,6 +32,7 @@
     <ProjectReference Include="..\CatFoodManager.Core\CatFoodManager.Core.csproj" />
     <ProjectReference Include="..\CatFoodManager.Domain\CatFoodManager.Domain.csproj" />
     <ProjectReference Include="..\CatFoodManager.Infrastructure\CatFoodManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\CatfoodManagement\CatfoodManagement.csproj" />
   </ItemGroup>
 
 </Project>

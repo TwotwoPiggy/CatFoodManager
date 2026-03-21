@@ -13,17 +13,20 @@ public class TaskService : ITaskService
     private readonly IRepository<TaskConfiguration> _configRepository;
     private readonly ITaskScheduler _taskScheduler;
     private readonly ILogger<TaskService> _logger;
+    private readonly INotificationService? _notificationService;
 
     public TaskService(
         IRepository<TaskItem> taskRepository,
         IRepository<TaskConfiguration> configRepository,
         ITaskScheduler taskScheduler,
-        ILogger<TaskService> logger)
+        ILogger<TaskService> logger,
+        INotificationService? notificationService = null)
     {
         _taskRepository = taskRepository;
         _configRepository = configRepository;
         _taskScheduler = taskScheduler;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task<TaskItem> CreateAsync(TaskType type, string name, string parameters, string? description = null, int priority = 0, CancellationToken cancellationToken = default)
@@ -46,6 +49,17 @@ public class TaskService : ITaskService
         await _taskRepository.AddAsync(task, cancellationToken).ConfigureAwait(false);
 
         await _taskScheduler.EnqueueAsync(task.Id, cancellationToken).ConfigureAwait(false);
+
+        if (_notificationService != null)
+        {
+            await _notificationService.PublishTaskStatusChangedAsync(
+                task.Id,
+                task.Name,
+                (int)task.Type,
+                0,
+                (int)Domain.Enums.TaskStatus.Pending,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
 
         _logger.LogInformation("Task created with ID: {Id}", task.Id);
         return task;
@@ -195,6 +209,8 @@ public class TaskService : ITaskService
             return;
         }
 
+        var oldStatus = (int)task.Status;
+
         task.Status = status;
         task.Result = result;
         task.ErrorMessage = errorMessage;
@@ -211,6 +227,19 @@ public class TaskService : ITaskService
 
         await _taskRepository.UpdateAsync(task, cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Task status updated: {Id}, Status: {Status}", id, status);
+
+        if (_notificationService != null && oldStatus != (int)status)
+        {
+            await _notificationService.PublishTaskStatusChangedAsync(
+                task.Id,
+                task.Name ?? $"Task {task.Id}",
+                (int)task.Type,
+                oldStatus,
+                (int)status,
+                result,
+                errorMessage,
+                cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public async Task<TaskConfiguration> GetConfigurationAsync(CancellationToken cancellationToken = default)

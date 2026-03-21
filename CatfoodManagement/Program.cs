@@ -93,6 +93,7 @@ namespace CatfoodManagement
             // 注册主窗体和桥接器（单例）
             services.AddSingleton<MainForm>();
             services.AddSingleton<JavaScriptBridge>();
+            services.AddSingleton<INotificationService, NotificationService>();
             
             // 注册数据库相关服务（作用域）
             services.AddScoped<SQLiteHelper>();
