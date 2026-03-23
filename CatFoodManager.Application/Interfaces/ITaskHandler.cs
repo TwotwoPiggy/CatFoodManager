@@ -13,7 +13,8 @@ public class TaskResult
     public bool Success { get; set; }
     public string? Result { get; set; }
     public string? ErrorMessage { get; set; }
+    public string? ResponseId { get; set; }
 
-    public static TaskResult Succeeded(string? result = null) => new() { Success = true, Result = result };
-    public static TaskResult Failed(string errorMessage) => new() { Success = false, ErrorMessage = errorMessage };
+    public static TaskResult Succeeded(string? result = null, string? responseId = null) => new() { Success = true, Result = result, ResponseId = responseId };
+    public static TaskResult Failed(string errorMessage, string? responseId = null) => new() { Success = false, ErrorMessage = errorMessage, ResponseId = responseId };
 }

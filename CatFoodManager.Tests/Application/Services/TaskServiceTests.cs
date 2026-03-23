@@ -6,6 +6,7 @@ using CatFoodManager.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using TaskStatus = CatFoodManager.Domain.Enums.TaskStatus;
 
 namespace CatFoodManager.Tests.Application.Services;
 
@@ -48,7 +49,7 @@ public class TaskServiceTests
         Assert.Equal(name, result.Name);
         Assert.Equal(parameters, result.Parameters);
         Assert.Equal(description, result.Description);
-        Assert.Equal(Domain.Enums.TaskStatus.Pending, result.Status);
+        Assert.Equal(TaskStatus.Pending, result.Status);
 
         _taskRepositoryMock.Verify(r => r.AddAsync(It.IsAny<TaskItem>(), default), Times.Once);
         _schedulerMock.Verify(s => s.EnqueueAsync(1, default), Times.Once);
@@ -82,42 +83,42 @@ public class TaskServiceTests
     [Fact]
     public async Task CancelAsync_ShouldCancelTask_WhenTaskIsNotRunning()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Pending };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Pending };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         var result = await _service.CancelAsync(1);
 
         Assert.True(result);
-        Assert.Equal(Domain.Enums.TaskStatus.Cancelled, task.Status);
+        Assert.Equal(TaskStatus.Cancelled, task.Status);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(task, default), Times.Once);
     }
 
     [Fact]
     public async Task CancelAsync_ShouldReturnFalse_WhenTaskIsRunning()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Running };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Running };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         var result = await _service.CancelAsync(1);
 
         Assert.False(result);
-        Assert.Equal(Domain.Enums.TaskStatus.Running, task.Status);
+        Assert.Equal(TaskStatus.Running, task.Status);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<TaskItem>(), default), Times.Never);
     }
 
     [Fact]
     public async Task RetryAsync_ShouldRetryTask_WhenTaskIsFailed()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Failed, RetryCount = 0 };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Failed, RetryCount = 0 };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         var result = await _service.RetryAsync(1);
 
         Assert.True(result);
-        Assert.Equal(Domain.Enums.TaskStatus.Retrying, task.Status);
+        Assert.Equal(TaskStatus.Retrying, task.Status);
         Assert.Equal(1, task.RetryCount);
         _schedulerMock.Verify(s => s.EnqueueAsync(1, default), Times.Once);
     }
@@ -125,7 +126,7 @@ public class TaskServiceTests
     [Fact]
     public async Task RetryAsync_ShouldReturnFalse_WhenTaskIsNotFailed()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Running };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Running };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
@@ -137,7 +138,7 @@ public class TaskServiceTests
     [Fact]
     public async Task DeleteAsync_ShouldDeleteTask_WhenTaskIsNotRunning()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Completed };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Completed };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
@@ -150,7 +151,7 @@ public class TaskServiceTests
     [Fact]
     public async Task DeleteAsync_ShouldReturnFalse_WhenTaskIsRunning()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Running };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Running };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
@@ -163,14 +164,14 @@ public class TaskServiceTests
     [Fact]
     public async Task TerminateAsync_ShouldTerminateRunningTask()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Running };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Running };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         var result = await _service.TerminateAsync(1);
 
         Assert.True(result);
-        Assert.Equal(Domain.Enums.TaskStatus.Cancelled, task.Status);
+        Assert.Equal(TaskStatus.Cancelled, task.Status);
         Assert.NotNull(task.ErrorMessage);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(task, default), Times.Once);
     }
@@ -178,7 +179,7 @@ public class TaskServiceTests
     [Fact]
     public async Task TerminateAsync_ShouldReturnFalse_WhenTaskIsNotRunning()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Pending };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Pending };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
@@ -190,13 +191,13 @@ public class TaskServiceTests
     [Fact]
     public async Task UpdateStatusAsync_ShouldUpdateTaskStatus()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Pending };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Pending };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
-        await _service.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Running, null, null);
+        await _service.UpdateStatusAsync(1, TaskStatus.Running, null, null, null);
 
-        Assert.Equal(Domain.Enums.TaskStatus.Running, task.Status);
+        Assert.Equal(TaskStatus.Running, task.Status);
         Assert.NotNull(task.StartedAt);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(task, default), Times.Once);
     }
@@ -204,14 +205,15 @@ public class TaskServiceTests
     [Fact]
     public async Task UpdateStatusAsync_ShouldSetCompletedAt_WhenStatusIsCompleted()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Running };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Running };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
-        await _service.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Completed, "result", null);
+        await _service.UpdateStatusAsync(1, TaskStatus.Completed, "result", null, "test-response-id");
 
-        Assert.Equal(Domain.Enums.TaskStatus.Completed, task.Status);
+        Assert.Equal(TaskStatus.Completed, task.Status);
         Assert.Equal("result", task.Result);
+        Assert.Equal("test-response-id", task.ResponseId);
         Assert.NotNull(task.CompletedAt);
     }
 

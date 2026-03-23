@@ -1,3 +1,5 @@
+using CatFoodManager.Core.Statics;
+
 namespace CatFoodManager.Core.Models.Dtos
 {
     public class CatFoodDto
@@ -11,5 +13,6 @@ namespace CatFoodManager.Core.Models.Dtos
         public string PicturePath { get; set; } = string.Empty;
         public DateTime? ProductionDate { get; set; }
         public string BrandName { get; set; } = string.Empty;
+        public PlatformType Platform { get; set; }
     }
 }

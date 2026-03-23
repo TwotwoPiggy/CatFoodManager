@@ -1,4 +1,4 @@
-import type { PagedResult, ApiResponse, TaskItem, TaskConfiguration } from '@/types'
+import type { PagedResult, ApiResponse, TaskItem, TaskConfiguration, ServiceStatus } from '@/types'
 
 declare global {
   interface Window {
@@ -57,6 +57,13 @@ declare global {
       getRunningTaskCountAsync: () => Promise<string>
       getQueueLengthAsync: () => Promise<string>
     }
+    backgroundServiceApi: {
+      getStatusAsync: () => Promise<string>
+      startAsync: () => Promise<string>
+      pauseAsync: () => Promise<string>
+      resumeAsync: () => Promise<string>
+      restartAsync: () => Promise<string>
+    }
   }
 }
 
@@ -83,7 +90,8 @@ export function isCefSharpReady(): boolean {
   return cefSharpReady || (
     (typeof window.catFoodApi !== 'undefined' && typeof window.catFoodApi.getCatFoods === 'function') ||
     (typeof window.bestPriceApi !== 'undefined' && typeof window.bestPriceApi.getBestPrices === 'function') ||
-    (typeof window.settingsApi !== 'undefined' && typeof window.settingsApi.getSettings === 'function')
+    (typeof window.settingsApi !== 'undefined' && typeof window.settingsApi.getSettings === 'function') ||
+    (typeof window.backgroundServiceApi !== 'undefined' && typeof window.backgroundServiceApi.getStatusAsync === 'function')
   )
 }
 
@@ -643,5 +651,80 @@ export async function getQueueLength(): Promise<{ Success: boolean; Count?: numb
   } catch (error) {
     console.error('GetQueueLength error:', error)
     return { Success: false, Message: 'Failed to get queue length' }
+  }
+}
+
+export async function getBackgroundServiceStatus(): Promise<{ Success: boolean; Data?: ServiceStatus; Message?: string }> {
+  console.log('[getBackgroundServiceStatus] Checking CefSharp ready...')
+  console.log('[getBackgroundServiceStatus] cefSharpReady flag:', cefSharpReady)
+  console.log('[getBackgroundServiceStatus] window.backgroundServiceApi exists:', typeof window.backgroundServiceApi !== 'undefined')
+  console.log('[getBackgroundServiceStatus] window.backgroundServiceApi.getStatusAsync exists:', typeof window.backgroundServiceApi?.getStatusAsync === 'function')
+  
+  if (!isCefSharpReady()) {
+    console.log('[getBackgroundServiceStatus] CefSharp not ready, returning early')
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    console.log('[getBackgroundServiceStatus] Calling window.backgroundServiceApi.getStatusAsync()...')
+    const result = await window.backgroundServiceApi.getStatusAsync()
+    console.log('[getBackgroundServiceStatus] Raw result:', result)
+    const parsed = JSON.parse(result)
+    console.log('[getBackgroundServiceStatus] Parsed result:', JSON.stringify(parsed, null, 2))
+    return parsed
+  } catch (error) {
+    console.error('GetBackgroundServiceStatus error:', error)
+    return { Success: false, Message: 'Failed to get background service status' }
+  }
+}
+
+export async function startBackgroundService(): Promise<{ Success: boolean; Message?: string }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.backgroundServiceApi.startAsync()
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('StartBackgroundService error:', error)
+    return { Success: false, Message: 'Failed to start background service' }
+  }
+}
+
+export async function pauseBackgroundService(): Promise<{ Success: boolean; Message?: string }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.backgroundServiceApi.pauseAsync()
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('PauseBackgroundService error:', error)
+    return { Success: false, Message: 'Failed to pause background service' }
+  }
+}
+
+export async function resumeBackgroundService(): Promise<{ Success: boolean; Message?: string }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.backgroundServiceApi.resumeAsync()
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('ResumeBackgroundService error:', error)
+    return { Success: false, Message: 'Failed to resume background service' }
+  }
+}
+
+export async function restartBackgroundService(): Promise<{ Success: boolean; Message?: string }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.backgroundServiceApi.restartAsync()
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('RestartBackgroundService error:', error)
+    return { Success: false, Message: 'Failed to restart background service' }
   }
 }

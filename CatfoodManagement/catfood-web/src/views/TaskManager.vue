@@ -11,9 +11,59 @@
         </div>
       </template>
 
-      <div class="status-bar">
-        <el-tag type="info">队列: {{ queueLength }}</el-tag>
-        <el-tag type="warning">执行中: {{ runningCount }}</el-tag>
+      <div class="service-status-card">
+        <div class="status-info">
+          <div class="status-indicator">
+            <el-tag :type="serviceStatusType" size="large">
+              <span class="status-dot" :class="serviceStatusClass"></span>
+              {{ serviceStatusText }}
+            </el-tag>
+          </div>
+          <div class="status-stats">
+            <span class="stat-item">
+              <el-icon><List /></el-icon>
+              队列: {{ serviceStatus?.QueueLength ?? queueLength }}
+            </span>
+            <span class="stat-item">
+              <el-icon><Loading /></el-icon>
+              执行中: {{ serviceStatus?.RunningTaskCount ?? runningCount }}
+            </span>
+            <span class="stat-item" v-if="serviceStatus?.StartedAt">
+              <el-icon><Clock /></el-icon>
+              启动: {{ formatDate(serviceStatus.StartedAt) }}
+            </span>
+          </div>
+        </div>
+        <div class="status-actions">
+          <el-button 
+            v-if="!serviceStatus?.IsRunning" 
+            type="success" 
+            :icon="VideoPlay" 
+            @click="handleStartService"
+            :loading="serviceLoading"
+          >启动服务</el-button>
+          <el-button 
+            v-if="serviceStatus?.IsRunning && !serviceStatus?.IsPaused" 
+            type="warning" 
+            :icon="VideoPause" 
+            @click="handlePauseService"
+            :loading="serviceLoading"
+          >暂停</el-button>
+          <el-button 
+            v-if="serviceStatus?.IsRunning && serviceStatus?.IsPaused" 
+            type="success" 
+            :icon="VideoPlay" 
+            @click="handleResumeService"
+            :loading="serviceLoading"
+          >恢复</el-button>
+          <el-button 
+            v-if="serviceStatus?.IsRunning" 
+            type="danger" 
+            :icon="RefreshRight" 
+            @click="handleRestartService"
+            :loading="serviceLoading"
+          >重启</el-button>
+        </div>
       </div>
 
       <div class="filter-bar">
@@ -133,16 +183,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, onActivated } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Setting, Refresh } from '@element-plus/icons-vue'
+import { Setting, Refresh, VideoPlay, VideoPause, RefreshRight, List, Loading, Clock } from '@element-plus/icons-vue'
 import { useTaskStore } from '@/stores/task'
 import { TaskStatus, TaskType, TaskStatusLabels, TaskTypeLabels, type TaskItem, type TaskConfiguration } from '@/types'
 import { storeToRefs } from 'pinia'
 import ScheduleSelector from '@/components/ScheduleSelector.vue'
+import { useServiceStatus } from '@/composables/useServiceStatus'
+import { startBackgroundService, pauseBackgroundService, resumeBackgroundService, restartBackgroundService, waitForCefSharp } from '@/utils/bridge'
 
 const taskStore = useTaskStore()
 const { tasks, loading, total, page, pageSize, runningCount, queueLength } = storeToRefs(taskStore)
+
+const {
+  status: serviceStatus,
+  loading: serviceLoading,
+  isRunning,
+  isPaused,
+  isStopped,
+  fetchStatus: fetchServiceStatus
+} = useServiceStatus()
 
 const currentPage = ref(1)
 const currentPageSize = ref(10)
@@ -162,11 +223,31 @@ const configForm = reactive<TaskConfiguration>({
 const saving = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+let serviceStatusTimer: ReturnType<typeof setInterval> | null = null
+
+const serviceStatusType = computed(() => {
+  if (!serviceStatus.value?.IsRunning) return 'danger'
+  if (serviceStatus.value?.IsPaused) return 'warning'
+  return 'success'
+})
+
+const serviceStatusClass = computed(() => {
+  if (!serviceStatus.value?.IsRunning) return 'stopped'
+  if (serviceStatus.value?.IsPaused) return 'paused'
+  return 'running'
+})
+
+const serviceStatusText = computed(() => {
+  if (!serviceStatus.value?.IsRunning) return '已停止'
+  if (serviceStatus.value?.IsPaused) return '已暂停'
+  return '运行中'
+})
 
 const handleRefresh = async () => {
   await taskStore.fetchTasks(currentPage.value, currentPageSize.value, filterStatus.value, filterType.value)
   await taskStore.refreshRunningCount()
   await taskStore.refreshQueueLength()
+  await fetchServiceStatus()
 }
 
 const handleFilterChange = () => {
@@ -227,7 +308,6 @@ const handleTerminate = async (id: number) => {
       ElMessage.error(result.Message || '终止失败')
     }
   } catch {
-    // 用户取消
   }
 }
 
@@ -254,8 +334,86 @@ const handleDelete = async (id: number) => {
       ElMessage.error(result.Message || '删除失败')
     }
   } catch {
-    // 用户取消
   }
+}
+
+const handleStartService = async () => {
+  const result = await startBackgroundService()
+  if (result.Success) {
+    ElMessage.success('后台服务已启动')
+    await fetchServiceStatus()
+  } else {
+    ElMessage.error(result.Message || '启动失败')
+  }
+}
+
+const handlePauseService = async () => {
+  const result = await pauseBackgroundService()
+  if (result.Success) {
+    ElMessage.success('后台服务已暂停')
+    await fetchServiceStatus()
+  } else {
+    ElMessage.error(result.Message || '暂停失败')
+  }
+}
+
+const handleResumeService = async () => {
+  const result = await resumeBackgroundService()
+  if (result.Success) {
+    ElMessage.success('后台服务已恢复')
+    await fetchServiceStatus()
+  } else {
+    ElMessage.error(result.Message || '恢复失败')
+  }
+}
+
+const handleRestartService = async () => {
+  try {
+    await ElMessageBox.confirm('确定要重启后台服务吗？正在执行的任务将被中断。', '确认重启', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const result = await restartBackgroundService()
+    if (result.Success) {
+      ElMessage.success('后台服务已重启')
+      await fetchServiceStatus()
+    } else {
+      ElMessage.error(result.Message || '重启失败')
+    }
+  } catch {
+  }
+}
+
+const checkServiceBeforeCreateTask = async (): Promise<boolean> => {
+  const status = await fetchServiceStatus()
+  
+  if (!status?.IsRunning || status?.IsPaused) {
+    try {
+      await ElMessageBox.confirm(
+        '后台服务未运行，任务将无法自动执行。是否立即启动后台服务？',
+        '服务未运行',
+        {
+          confirmButtonText: '启动服务',
+          cancelButtonText: '稍后处理',
+          type: 'warning'
+        }
+      )
+      const result = await startBackgroundService()
+      if (result.Success) {
+        ElMessage.success('后台服务已启动')
+        await fetchServiceStatus()
+        return true
+      } else {
+        ElMessage.error(result.Message || '启动失败')
+        return false
+      }
+    } catch {
+      return true
+    }
+  }
+  
+  return true
 }
 
 const getStatusTagType = (status: TaskStatus): 'success' | 'warning' | 'danger' | 'info' | '' => {
@@ -302,17 +460,36 @@ const formatJson = (jsonStr: string): string => {
 }
 
 onMounted(async () => {
+  await waitForCefSharp()
   await handleRefresh()
+  await fetchServiceStatus()
+  
   refreshTimer = setInterval(() => {
     taskStore.refreshRunningCount()
     taskStore.refreshQueueLength()
   }, 5000)
+  
+  serviceStatusTimer = setInterval(() => {
+    fetchServiceStatus()
+  }, 10000)
+})
+
+onActivated(async () => {
+  await handleRefresh()
+  await fetchServiceStatus()
 })
 
 onUnmounted(() => {
   if (refreshTimer) {
     clearInterval(refreshTimer)
   }
+  if (serviceStatusTimer) {
+    clearInterval(serviceStatusTimer)
+  }
+})
+
+defineExpose({
+  checkServiceBeforeCreateTask
 })
 </script>
 
@@ -328,10 +505,75 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.status-bar {
+.service-status-card {
   display: flex;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #f5f7fa;
+  border-radius: 8px;
   margin-bottom: 16px;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.status-indicator {
+  .el-tag {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  
+  &.running {
+    background-color: #67c23a;
+    animation: pulse 2s infinite;
+  }
+  
+  &.paused {
+    background-color: #e6a23c;
+  }
+  
+  &.stopped {
+    background-color: #f56c6c;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-stats {
+  display: flex;
+  gap: 20px;
+  
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #606266;
+    font-size: 14px;
+  }
+}
+
+.status-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .filter-bar {

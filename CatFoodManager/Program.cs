@@ -72,7 +72,7 @@ namespace CatFoodManager
                     .AddSingleton<MainViewModel>()
                     .AddScoped<BrandManager>()
                     .AddScoped<LowestPrice>()
-                    .AddScoped<SQLiteHelper>()
+                    .AddSingleton<SQLiteHelper>()
                     .AddScoped(serviceProvider => new OCRHelper(tessdataPath))
                     .AddScoped<IRepository, CommonRepository>()
                     .AddScoped<PictureContentService>()

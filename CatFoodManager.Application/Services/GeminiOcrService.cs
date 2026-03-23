@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CatFoodManager.Application.Interfaces;
 using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
+using CatFoodManager.Core.Utils;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Twotwo.Agent.Interfaces;
@@ -25,6 +27,16 @@ public class GeminiOcrService : IApplicationGeminiOcrService
 
     private const string CacheKeyPrefix = "GeminiModels_";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(1);
+
+    private const string FailedResponseCacheKeyPrefix = "GeminiResponse_Failed_";
+    private const string FailedListCacheKey = "GeminiResponse_FailedList";
+    private static readonly TimeSpan FailedResponseCacheDuration = TimeSpan.FromHours(24);
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new FlexibleDateTimeConverter() }
+    };
 
     private readonly IGeminiAgentService _agentService;
     private readonly IRepository _repository;
@@ -97,7 +109,32 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         return Convert.ToHexString(bytes)[..16];
     }
 
-    public async Task<IReadOnlyList<T>> ProcessPicturesAsync<T>(string folderPath, string promptText, CancellationToken cancellationToken = default)
+    private static string GetFailedResponseCacheKey(string responseId)
+    {
+        return $"{FailedResponseCacheKeyPrefix}{responseId}";
+    }
+
+    private void AddToFailedList(string responseId, long taskId, string folderPath, string promptText, string? errorMessage)
+    {
+        var list = _cache.TryGetValue(FailedListCacheKey, out List<FailedResponseCacheItem>? existingList)
+            ? existingList!
+            : new List<FailedResponseCacheItem>();
+
+        list.RemoveAll(x => x.ResponseId == responseId);
+
+        list.Add(new FailedResponseCacheItem(responseId, taskId, folderPath, promptText, DateTime.Now, errorMessage));
+        _cache.Set(FailedListCacheKey, list, FailedResponseCacheDuration);
+    }
+
+    private void RemoveFromFailedList(string responseId)
+    {
+        if (_cache.TryGetValue(FailedListCacheKey, out List<FailedResponseCacheItem>? list))
+        {
+            list.RemoveAll(x => x.ResponseId == responseId);
+        }
+    }
+
+    public async Task<ProcessPicturesResult<T>> ProcessPicturesAsync<T>(string folderPath, string promptText, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Processing pictures from folder: {FolderPath}", folderPath);
 
@@ -127,18 +164,24 @@ public class GeminiOcrService : IApplicationGeminiOcrService
 
         var request = new AIRequest(Text: promptText, Files: fileBytes, MimeType: "image/jpeg");
 
+        string? responseId = null;
+        GeminiResponseEntity? entity = null;
+
         try
         {
             var response = await _agentService.GenerateContentAsync(request);
             if (response == null)
             {
                 _logger.LogWarning("Received null response from Gemini agent");
-                return [];
+                return new ProcessPicturesResult<T>([], null);
             }
 
-            var entity = new GeminiResponseEntity
+            responseId = response.ResponseId ?? Guid.NewGuid().ToString();
+            var cacheKey = GetFailedResponseCacheKey(responseId);
+
+            entity = new GeminiResponseEntity
             {
-                Name = response.ResponseId,
+                Name = responseId,
                 ResponseJson = JsonSerializer.Serialize(response),
                 ResponseText = response.Text ?? string.Empty,
                 ModelVersion = response.ModelVersion ?? string.Empty,
@@ -147,23 +190,38 @@ public class GeminiOcrService : IApplicationGeminiOcrService
                 CreatedAt = DateTime.Now
             };
 
+            _cache.Set(cacheKey, entity, FailedResponseCacheDuration);
+
             _repository.Add(entity);
+
+            _cache.Remove(cacheKey);
+            RemoveFromFailedList(responseId);
 
             if (string.IsNullOrEmpty(response.Text))
             {
                 _logger.LogWarning("Received empty text response");
-                return [];
+                return new ProcessPicturesResult<T>([], responseId);
             }
 
             var jsonText = CleanJsonMarkdown(response.Text);
-            var dtos = JsonSerializer.Deserialize<List<T>>(jsonText) ?? [];
+            var dtos = JsonSerializer.Deserialize<List<T>>(jsonText, JsonOptions) ?? [];
             _logger.LogInformation("Successfully processed pictures, returning {Count} items", dtos.Count);
-            return dtos;
+            return new ProcessPicturesResult<T>(dtos, responseId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing pictures");
-            return [];
+            if (!string.IsNullOrEmpty(responseId) && entity != null)
+            {
+                var cacheKey = GetFailedResponseCacheKey(responseId);
+                _cache.Set(cacheKey, entity, FailedResponseCacheDuration);
+                AddToFailedList(responseId, 0, folderPath, promptText, ex.Message);
+                _logger.LogError(ex, "Error processing pictures. Entity cached with responseId: {ResponseId}", responseId);
+            }
+            else
+            {
+                _logger.LogError(ex, "Error processing pictures");
+            }
+            return new ProcessPicturesResult<T>([], responseId);
         }
     }
 
@@ -188,5 +246,49 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         }
 
         return trimmed.Trim();
+    }
+
+    public IReadOnlyList<FailedResponseCacheItem> GetFailedResponses()
+    {
+        if (_cache.TryGetValue(FailedListCacheKey, out List<FailedResponseCacheItem>? list))
+        {
+            return list.AsReadOnly();
+        }
+
+        return [];
+    }
+
+    public Task<bool> RetrySaveResponseAsync(string responseId)
+    {
+        var cacheKey = GetFailedResponseCacheKey(responseId);
+
+        if (!_cache.TryGetValue(cacheKey, out GeminiResponseEntity? entity) || entity == null)
+        {
+            _logger.LogWarning("No cached response found for responseId: {ResponseId}", responseId);
+            return Task.FromResult(false);
+        }
+
+        try
+        {
+            _repository.Add(entity);
+            _cache.Remove(cacheKey);
+            RemoveFromFailedList(responseId);
+            _logger.LogInformation("Successfully saved cached response for responseId: {ResponseId}", responseId);
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save cached response for responseId: {ResponseId}", responseId);
+            return Task.FromResult(false);
+        }
+    }
+
+    public void RemoveFailedResponse(string responseId)
+    {
+        var cacheKey = GetFailedResponseCacheKey(responseId);
+
+        _cache.Remove(cacheKey);
+        RemoveFromFailedList(responseId);
+        _logger.LogInformation("Removed cached response for responseId: {ResponseId}", responseId);
     }
 }

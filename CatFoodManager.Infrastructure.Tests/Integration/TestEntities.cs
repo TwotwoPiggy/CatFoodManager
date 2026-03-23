@@ -1,3 +1,4 @@
+using CatFoodManager.Domain.Entities;
 using CatFoodManager.Domain.Interfaces;
 using SQLite;
 
@@ -57,4 +58,9 @@ public class TestBestPrice : IEntity
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
     public DateTimeOffset? PurchasedAt { get; set; }
+}
+
+public class TestEntityFromBaseEntity : BaseEntity
+{
+    public string? Description { get; set; }
 }

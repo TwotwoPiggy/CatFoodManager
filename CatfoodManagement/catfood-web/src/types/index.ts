@@ -149,3 +149,12 @@ export const TaskTypeLabels: Record<number, string> = {
   [TaskType.ImageMove]: '图片移动',
   [TaskType.ImageProcess]: '图片处理'
 }
+
+export interface ServiceStatus {
+  IsRunning: boolean
+  IsPaused: boolean
+  RunningTaskCount: number
+  QueueLength: number
+  StartedAt?: string
+  LastActivityAt?: string
+}

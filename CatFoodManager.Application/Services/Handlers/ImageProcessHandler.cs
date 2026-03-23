@@ -9,6 +9,11 @@ public class ImageProcessHandler : ITaskHandler
 {
     private readonly ILogger<ImageProcessHandler> _logger;
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public TaskType TaskType => TaskType.ImageProcess;
 
     public ImageProcessHandler(ILogger<ImageProcessHandler> logger)
@@ -20,7 +25,7 @@ public class ImageProcessHandler : ITaskHandler
     {
         try
         {
-            var processParams = JsonSerializer.Deserialize<ImageProcessParameters>(parameters);
+            var processParams = JsonSerializer.Deserialize<ImageProcessParameters>(parameters, JsonOptions);
             if (processParams == null || string.IsNullOrEmpty(processParams.ImagePath))
             {
                 return TaskResult.Failed("Invalid parameters: ImagePath is required");

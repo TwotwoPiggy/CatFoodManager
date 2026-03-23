@@ -45,46 +45,46 @@ namespace CatfoodManagement.Services.Bridge
         }
 
         /// <summary>
-/// 获取可用的 AI 模型列表
-/// </summary>
-/// <param name="apiKey">API Key，用于生成缓存键</param>
-/// <returns>JSON 格式的模型列表</returns>
-public async Task<string> GetModelsAsync(string? apiKey = null)
-{
-    using var scope = _serviceProvider.CreateScope();
-    var ocrService = scope.ServiceProvider.GetRequiredService<IGeminiOcrService>();
+        /// 获取可用的 AI 模型列表
+        /// </summary>
+        /// <param name="apiKey">API Key，用于生成缓存键</param>
+        /// <returns>JSON 格式的模型列表</returns>
+        public async Task<string> GetModelsAsync(string? apiKey = null)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var ocrService = scope.ServiceProvider.GetRequiredService<IGeminiOcrService>();
 
-    try
-    {
-        var models = await ocrService.GetModelsAsync(apiKey);
-        return JsonConvert.SerializeObject(new { Success = true, Data = models });
-    }
-    catch (Exception ex)
-    {
-        return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message });
-    }
-}
+            try
+            {
+                var models = await ocrService.GetModelsAsync(apiKey);
+                return JsonConvert.SerializeObject(new { Success = true, Data = models });
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message });
+            }
+        }
 
-/// <summary>
-/// 清除模型列表缓存
-/// </summary>
-/// <param name="apiKey">API Key，用于生成缓存键</param>
-/// <returns>JSON 格式的操作结果</returns>
-public string ClearModelsCache(string? apiKey = null)
-{
-    using var scope = _serviceProvider.CreateScope();
-    var ocrService = scope.ServiceProvider.GetRequiredService<IGeminiOcrService>();
+        /// <summary>
+        /// 清除模型列表缓存
+        /// </summary>
+        /// <param name="apiKey">API Key，用于生成缓存键</param>
+        /// <returns>JSON 格式的操作结果</returns>
+        public string ClearModelsCache(string? apiKey = null)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var ocrService = scope.ServiceProvider.GetRequiredService<IGeminiOcrService>();
 
-    try
-    {
-        ocrService.ClearModelsCache(apiKey);
-        return JsonConvert.SerializeObject(new { Success = true, Message = "Cache cleared" });
-    }
-    catch (Exception ex)
-    {
-        return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message });
-    }
-}
+            try
+            {
+                ocrService.ClearModelsCache(apiKey);
+                return JsonConvert.SerializeObject(new { Success = true, Message = "Cache cleared" });
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message });
+            }
+        }
 
         /// <summary>
         /// 从图片文件夹同步识别猫粮信息
@@ -92,7 +92,7 @@ public string ClearModelsCache(string? apiKey = null)
         /// <param name="folderPath">图片文件夹路径</param>
         /// <param name="promptText">AI 提示文本</param>
         /// <returns>JSON 格式的识别结果</returns>
-        public async Task<string> SyncFromPicturesAsync(string folderPath, string promptText)
+        public async Task<string> SyncFromPicturesAsync(string folderPath, string promptText, int platform)
         {
             using var scope = _serviceProvider.CreateScope();
             var ocrService = scope.ServiceProvider.GetRequiredService<IGeminiOcrService>();
@@ -112,8 +112,11 @@ public string ClearModelsCache(string? apiKey = null)
 
                 // 调用 OCR 服务处理图片
                 var results = await ocrService.ProcessPicturesAsync<CatFoodManager.Core.Models.Dtos.CatFoodDto>(folderPath, promptText);
-                
-                return JsonConvert.SerializeObject(new { Success = true, Count = results.Count, Data = results });
+                foreach (var item in results.Items)
+                {
+                    item.Platform = (CatFoodManager.Core.Statics.PlatformType)platform;
+                } // 设置平台信息
+                return JsonConvert.SerializeObject(new { Success = true, Count = results.Items.Count, Data = results.Items, ResponseId = results.ResponseId });
             }
             catch (Exception ex)
             {

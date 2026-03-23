@@ -7,18 +7,22 @@ using Microsoft.Extensions.Logging;
 
 namespace CatFoodManager.Infrastructure.Services;
 
-public class TaskBackgroundService : BackgroundService
+public class TaskBackgroundService : BackgroundService, IBackgroundServiceControl
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TaskBackgroundService> _logger;
 
-    private ITaskScheduler? _taskScheduler;
-    private ITaskExecutor? _taskExecutor;
-    private IRepository<Domain.Entities.TaskItem>? _taskRepository;
-    private IRepository<Domain.Entities.TaskConfiguration>? _configRepository;
-
     private int _pollingIntervalSeconds = 60;
     private int _maxConcurrentTasks = 2;
+
+    private volatile bool _isRunning;
+    private volatile bool _isPaused;
+    private DateTimeOffset? _startedAt;
+    private DateTimeOffset? _lastActivityAt;
+
+    private CancellationTokenSource? _internalCts;
+    private CancellationTokenSource? _linkedCts;
+    private Task? _executionTask;
 
     public TaskBackgroundService(
         IServiceProvider serviceProvider,
@@ -34,17 +38,31 @@ public class TaskBackgroundService : BackgroundService
 
         await InitializeAsync(stoppingToken).ConfigureAwait(false);
 
-        if (_taskScheduler != null)
+        _linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        _isRunning = true;
+        _startedAt = DateTimeOffset.UtcNow;
+        _lastActivityAt = DateTimeOffset.UtcNow;
+
+        using (var initScope = _serviceProvider.CreateScope())
         {
-            await _taskScheduler.StartAsync(stoppingToken).ConfigureAwait(false);
+            var taskScheduler = initScope.ServiceProvider.GetService<ITaskScheduler>();
+            if (taskScheduler != null)
+            {
+                await taskScheduler.StartAsync(stoppingToken).ConfigureAwait(false);
+            }
         }
 
-        while (!stoppingToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested && !_linkedCts.Token.IsCancellationRequested)
         {
             try
             {
-                await ProcessPendingTasksAsync(stoppingToken).ConfigureAwait(false);
-                await Task.Delay(TimeSpan.FromSeconds(_pollingIntervalSeconds), stoppingToken).ConfigureAwait(false);
+                if (!_isPaused)
+                {
+                    await ProcessPendingTasksAsync(_linkedCts.Token).ConfigureAwait(false);
+                    _lastActivityAt = DateTimeOffset.UtcNow;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(_pollingIntervalSeconds), _linkedCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -53,15 +71,20 @@ public class TaskBackgroundService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in task background service");
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(10), _linkedCts.Token).ConfigureAwait(false);
             }
         }
 
-        if (_taskScheduler != null)
+        using (var stopScope = _serviceProvider.CreateScope())
         {
-            await _taskScheduler.StopAsync(stoppingToken).ConfigureAwait(false);
+            var taskScheduler = stopScope.ServiceProvider.GetService<ITaskScheduler>();
+            if (taskScheduler != null)
+            {
+                await taskScheduler.StopAsync(stoppingToken).ConfigureAwait(false);
+            }
         }
 
+        _isRunning = false;
         _logger.LogInformation("Task background service stopped");
     }
 
@@ -69,14 +92,11 @@ public class TaskBackgroundService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
 
-        _taskScheduler = scope.ServiceProvider.GetService<ITaskScheduler>();
-        _taskExecutor = scope.ServiceProvider.GetService<ITaskExecutor>();
-        _taskRepository = scope.ServiceProvider.GetService<IRepository<Domain.Entities.TaskItem>>();
-        _configRepository = scope.ServiceProvider.GetService<IRepository<Domain.Entities.TaskConfiguration>>();
+        var configRepository = scope.ServiceProvider.GetService<IRepository<Domain.Entities.TaskConfiguration>>();
 
-        if (_configRepository != null)
+        if (configRepository != null)
         {
-            var configs = await _configRepository.GetAllAsync(cancellationToken).ConfigureAwait(false);
+            var configs = await configRepository.GetAllAsync(cancellationToken).ConfigureAwait(false);
             var config = configs.FirstOrDefault();
             if (config != null)
             {
@@ -91,16 +111,21 @@ public class TaskBackgroundService : BackgroundService
 
     private async Task ProcessPendingTasksAsync(CancellationToken cancellationToken)
     {
-        if (_taskRepository == null || _taskExecutor == null)
+        using var scope = _serviceProvider.CreateScope();
+
+        var taskRepository = scope.ServiceProvider.GetService<IRepository<Domain.Entities.TaskItem>>();
+        var taskExecutor = scope.ServiceProvider.GetService<ITaskExecutor>();
+
+        if (taskRepository == null || taskExecutor == null)
         {
             return;
         }
 
-        var pendingTasks = await _taskRepository.FindAsync(
+        var pendingTasks = await taskRepository.FindAsync(
             t => t.Status == Domain.Enums.TaskStatus.Pending || t.Status == Domain.Enums.TaskStatus.Queued,
             cancellationToken).ConfigureAwait(false);
 
-        var runningCount = await _taskExecutor.GetRunningCountAsync(cancellationToken).ConfigureAwait(false);
+        var runningCount = await taskExecutor.GetRunningCountAsync(cancellationToken).ConfigureAwait(false);
         var availableSlots = Math.Max(0, _maxConcurrentTasks - runningCount);
 
         if (availableSlots <= 0)
@@ -121,7 +146,135 @@ public class TaskBackgroundService : BackgroundService
                 break;
             }
 
-            _ = _taskExecutor.ExecuteAsync(task.Id, cancellationToken);
+            _ = taskExecutor.ExecuteAsync(task.Id, cancellationToken);
         }
+    }
+
+    public Task<bool> IsRunningAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_isRunning);
+    }
+
+    public Task<bool> IsPausedAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_isPaused);
+    }
+
+    public Task StartServiceAsync(CancellationToken cancellationToken = default)
+    {
+        if (_isRunning)
+        {
+            _logger.LogWarning("Task background service is already running");
+            return Task.CompletedTask;
+        }
+
+        _logger.LogInformation("Manually starting task background service");
+
+        _internalCts?.Cancel();
+        _internalCts?.Dispose();
+        _internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _isPaused = false;
+        _isRunning = true;
+        _startedAt = DateTimeOffset.UtcNow;
+        _lastActivityAt = DateTimeOffset.UtcNow;
+        
+        _executionTask = ExecuteAsync(_internalCts.Token);
+
+        return Task.CompletedTask;
+    }
+
+    public Task PauseAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_isRunning)
+        {
+            _logger.LogWarning("Cannot pause: task background service is not running");
+            return Task.CompletedTask;
+        }
+
+        if (_isPaused)
+        {
+            _logger.LogWarning("Task background service is already paused");
+            return Task.CompletedTask;
+        }
+
+        _logger.LogInformation("Pausing task background service");
+        _isPaused = true;
+        _lastActivityAt = DateTimeOffset.UtcNow;
+
+        return Task.CompletedTask;
+    }
+
+    public Task ResumeAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_isRunning)
+        {
+            _logger.LogWarning("Cannot resume: task background service is not running");
+            return Task.CompletedTask;
+        }
+
+        if (!_isPaused)
+        {
+            _logger.LogWarning("Task background service is not paused");
+            return Task.CompletedTask;
+        }
+
+        _logger.LogInformation("Resuming task background service");
+        _isPaused = false;
+        _lastActivityAt = DateTimeOffset.UtcNow;
+
+        return Task.CompletedTask;
+    }
+
+    public async Task StopServiceAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Stopping task background service");
+
+        _linkedCts?.Cancel();
+        _isRunning = false;
+        _isPaused = false;
+
+        if (_executionTask != null)
+        {
+            try
+            {
+                await _executionTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        _linkedCts?.Dispose();
+        _linkedCts = null;
+        _executionTask = null;
+    }
+
+    public async Task<ServiceStatusInfo> GetStatusAsync(CancellationToken cancellationToken = default)
+    {
+        int runningTaskCount = 0;
+        int queueLength = 0;
+
+        using var scope = _serviceProvider.CreateScope();
+        var taskExecutor = scope.ServiceProvider.GetService<ITaskExecutor>();
+        var taskScheduler = scope.ServiceProvider.GetService<ITaskScheduler>();
+
+        if (taskExecutor != null)
+        {
+            runningTaskCount = await taskExecutor.GetRunningCountAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (taskScheduler != null)
+        {
+            queueLength = await taskScheduler.GetQueueLengthAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return new ServiceStatusInfo(
+            IsRunning: _isRunning,
+            IsPaused: _isPaused,
+            RunningTaskCount: runningTaskCount,
+            QueueLength: queueLength,
+            StartedAt: _startedAt,
+            LastActivityAt: _lastActivityAt
+        );
     }
 }

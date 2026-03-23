@@ -3,9 +3,11 @@ using CatFoodManager.Application.Services;
 using CatFoodManager.Domain.Entities;
 using CatFoodManager.Domain.Enums;
 using CatFoodManager.Domain.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using TaskStatus = CatFoodManager.Domain.Enums.TaskStatus;
 
 namespace CatFoodManager.Tests.Application.Services;
 
@@ -16,6 +18,7 @@ public class TaskExecutorTests
     private readonly Mock<ITaskHandler> _handlerMock;
     private readonly Mock<ITaskService> _taskServiceMock;
     private readonly Mock<ILogger<TaskExecutor>> _loggerMock;
+    private readonly ServiceProvider _serviceProvider;
     private readonly TaskExecutor _executor;
 
     public TaskExecutorTests()
@@ -28,17 +31,21 @@ public class TaskExecutorTests
 
         _handlerMock.SetupGet(h => h.TaskType).Returns(TaskType.ImageSync);
 
-        _configRepositoryMock.Setup(r => r.GetAllAsync(default))
+        _configRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TaskConfiguration>
             {
                 new() { MaxConcurrentTasks = 2, PollingIntervalSeconds = 60 }
             });
 
+        var services = new ServiceCollection();
+        services.AddSingleton(_taskRepositoryMock.Object);
+        services.AddSingleton(_configRepositoryMock.Object);
+        services.AddSingleton(_handlerMock.Object);
+        services.AddSingleton(_taskServiceMock.Object);
+        _serviceProvider = services.BuildServiceProvider();
+
         _executor = new TaskExecutor(
-            _taskRepositoryMock.Object,
-            _configRepositoryMock.Object,
-            new List<ITaskHandler> { _handlerMock.Object },
-            _taskServiceMock.Object,
+            _serviceProvider,
             _loggerMock.Object);
     }
 
@@ -49,20 +56,20 @@ public class TaskExecutorTests
         {
             Id = 1,
             Type = TaskType.ImageSync,
-            Status = Domain.Enums.TaskStatus.Pending,
+            Status = TaskStatus.Pending,
             Parameters = "{}"
         };
 
-        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
 
-        _handlerMock.Setup(h => h.HandleAsync("{}", default))
+        _handlerMock.Setup(h => h.HandleAsync("{}", It.IsAny<CancellationToken>()))
             .ReturnsAsync(TaskResult.Succeeded("{\"count\":10}"));
 
         await _executor.ExecuteAsync(1);
 
-        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Running, null, null, default), Times.Once);
-        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Completed, "{\"count\":10}", null, default), Times.Once);
+        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, TaskStatus.Running, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, TaskStatus.Completed, "{\"count\":10}", null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -72,19 +79,19 @@ public class TaskExecutorTests
         {
             Id = 1,
             Type = TaskType.ImageSync,
-            Status = Domain.Enums.TaskStatus.Pending,
+            Status = TaskStatus.Pending,
             Parameters = "{}"
         };
 
-        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
 
-        _handlerMock.Setup(h => h.HandleAsync("{}", default))
+        _handlerMock.Setup(h => h.HandleAsync("{}", It.IsAny<CancellationToken>()))
             .ReturnsAsync(TaskResult.Failed("Test error"));
 
         await _executor.ExecuteAsync(1);
 
-        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Failed, null, "Test error", default), Times.Once);
+        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, TaskStatus.Failed, null, "Test error", null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -94,19 +101,19 @@ public class TaskExecutorTests
         {
             Id = 1,
             Type = TaskType.ImageSync,
-            Status = Domain.Enums.TaskStatus.Pending,
+            Status = TaskStatus.Pending,
             Parameters = "{}"
         };
 
-        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
 
-        _handlerMock.Setup(h => h.HandleAsync("{}", default))
+        _handlerMock.Setup(h => h.HandleAsync("{}", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Unexpected error"));
 
         await _executor.ExecuteAsync(1);
 
-        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Failed, null, "Unexpected error", default), Times.Once);
+        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, TaskStatus.Failed, null, "Unexpected error", null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -116,17 +123,17 @@ public class TaskExecutorTests
         {
             Id = 1,
             Type = TaskType.ImageDelete,
-            Status = Domain.Enums.TaskStatus.Pending,
+            Status = TaskStatus.Pending,
             Parameters = "{}"
         };
 
-        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
 
         await _executor.ExecuteAsync(1);
 
-        _handlerMock.Verify(h => h.HandleAsync(It.IsAny<string>(), default), Times.Never);
-        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, Domain.Enums.TaskStatus.Failed, null, It.IsAny<string>(), default), Times.Once);
+        _handlerMock.Verify(h => h.HandleAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _taskServiceMock.Verify(s => s.UpdateStatusAsync(1, TaskStatus.Failed, null, It.IsAny<string>(), null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -136,19 +143,20 @@ public class TaskExecutorTests
         {
             Id = 1,
             Type = TaskType.ImageSync,
-            Status = Domain.Enums.TaskStatus.Pending,
+            Status = TaskStatus.Pending,
             Parameters = "{}"
         };
 
-        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
 
         var tcs = new TaskCompletionSource<TaskResult>();
-        _handlerMock.Setup(h => h.HandleAsync("{}", default))
+        _handlerMock.Setup(h => h.HandleAsync("{}", It.IsAny<CancellationToken>()))
             .Returns(tcs.Task);
 
         var executeTask = _executor.ExecuteAsync(1);
 
+        await Task.Delay(100);
         var isRunning = await _executor.IsRunningAsync(1);
         Assert.True(isRunning);
 
@@ -168,20 +176,20 @@ public class TaskExecutorTests
         {
             Id = 1,
             Type = TaskType.ImageSync,
-            Status = Domain.Enums.TaskStatus.Pending,
+            Status = TaskStatus.Pending,
             Parameters = "{}"
         };
 
-        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
+        _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
 
         var tcs = new TaskCompletionSource<TaskResult>();
-        _handlerMock.Setup(h => h.HandleAsync("{}", default))
+        _handlerMock.Setup(h => h.HandleAsync("{}", It.IsAny<CancellationToken>()))
             .Returns(tcs.Task);
 
         var executeTask = _executor.ExecuteAsync(1);
 
-        await Task.Delay(50);
+        await Task.Delay(100);
         Assert.Equal(1, await _executor.GetRunningCountAsync());
 
         tcs.SetResult(TaskResult.Succeeded());

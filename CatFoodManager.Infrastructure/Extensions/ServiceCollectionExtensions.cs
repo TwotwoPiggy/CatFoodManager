@@ -1,3 +1,4 @@
+using CatFoodManager.Application.Interfaces;
 using CatFoodManager.Domain.Entities;
 using CatFoodManager.Domain.Interfaces;
 using CatFoodManager.Infrastructure.Caching;
@@ -25,7 +26,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped(typeof(IRepository<>), typeof(SQLiteRepository<>));
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 
-        services.AddHostedService<TaskBackgroundService>();
+        services.AddSingleton<TaskBackgroundService>();
+        services.AddSingleton<IBackgroundServiceControl>(sp => sp.GetRequiredService<TaskBackgroundService>());
 
         return services;
     }

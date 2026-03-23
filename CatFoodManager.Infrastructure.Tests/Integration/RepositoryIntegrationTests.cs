@@ -88,6 +88,32 @@ public class RepositoryIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AddAsync_EntityFromBaseEntity_ShouldGenerateId()
+    {
+        var baseEntityRepository = new SQLiteRepository<TestEntityFromBaseEntity>(_dbContext);
+        await _dbContext.CreateTableAsync<TestEntityFromBaseEntity>();
+        var entity = new TestEntityFromBaseEntity { Name = "Test", Description = "Test Description" };
+
+        await baseEntityRepository.AddAsync(entity);
+
+        Assert.True(entity.Id > 0, $"Expected Id > 0, but got {entity.Id}");
+    }
+
+    [Fact]
+    public async Task CreateTable_EntityFromBaseEntity_ShouldHavePrimaryKeyAutoIncrement()
+    {
+        var baseEntityRepository = new SQLiteRepository<TestEntityFromBaseEntity>(_dbContext);
+        await _dbContext.CreateTableAsync<TestEntityFromBaseEntity>();
+        
+        var sql = "SELECT sql FROM sqlite_master WHERE type='table' AND name='TestEntityFromBaseEntity'";
+        var result = await _dbContext.Database.ExecuteScalarAsync<string>(sql);
+        
+        Assert.NotNull(result);
+        Assert.Contains("PRIMARY KEY", result.ToUpper());
+        Assert.Contains("AUTOINCREMENT", result.ToUpper());
+    }
+
+    [Fact]
     public async Task AddRangeAsync_ShouldAddMultipleEntities()
     {
         var factories = new List<TestFactory>
@@ -100,6 +126,22 @@ public class RepositoryIntegrationTests : IAsyncLifetime
 
         var result = await _factoryRepository.GetAllAsync();
         Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public async Task AddRangeAsync_EntityFromBaseEntity_ShouldGenerateIds()
+    {
+        var baseEntityRepository = new SQLiteRepository<TestEntityFromBaseEntity>(_dbContext);
+        await _dbContext.CreateTableAsync<TestEntityFromBaseEntity>();
+        var entities = new List<TestEntityFromBaseEntity>
+        {
+            new() { Name = "Test 1", Description = "Description 1" },
+            new() { Name = "Test 2", Description = "Description 2" }
+        };
+
+        await baseEntityRepository.AddRangeAsync(entities);
+
+        Assert.All(entities, e => Assert.True(e.Id > 0, $"Expected Id > 0, but got {e.Id}"));
     }
 
     [Fact]

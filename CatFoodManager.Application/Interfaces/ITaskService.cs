@@ -14,7 +14,7 @@ public interface ITaskService
     Task<bool> RetryAsync(long id, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
     Task<bool> TerminateAsync(long id, CancellationToken cancellationToken = default);
-    Task UpdateStatusAsync(long id, Domain.Enums.TaskStatus status, string? result = null, string? errorMessage = null, CancellationToken cancellationToken = default);
+    Task UpdateStatusAsync(long id, Domain.Enums.TaskStatus status, string? result = null, string? errorMessage = null, string? responseId = null, CancellationToken cancellationToken = default);
     Task<TaskConfiguration> GetConfigurationAsync(CancellationToken cancellationToken = default);
     Task<TaskConfiguration> UpdateConfigurationAsync(TaskConfiguration configuration, CancellationToken cancellationToken = default);
 }

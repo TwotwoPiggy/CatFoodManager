@@ -293,6 +293,9 @@
               />
             </el-select>
           </el-form-item>
+          <el-form-item label="平台">
+            <el-input :model-value="getPlatformLabel(syncForm.platform)" readonly placeholder="根据文件夹自动关联" style="width: 100%" />
+          </el-form-item>
           <el-form-item label="提示词模板">
             <el-select 
               v-model="selectedPromptId" 
@@ -333,7 +336,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onActivated, reactive, computed } from 'vue'
+import { ref, onMounted, onActivated, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, RefreshRight, Plus, Refresh } from '@element-plus/icons-vue'
 import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, viewImage, waitForCefSharp, createTask } from '@/utils/bridge'
@@ -379,7 +382,8 @@ const appConfigStore = useAppConfigStore()
 // OCR 同步表单
 const syncForm = reactive({
   folderPath: '',
-  promptText: ''
+  promptText: '',
+  platform: PlatformType.Taobao
 })
 
 // 选中的 prompt ID
@@ -416,6 +420,14 @@ const PlatformTypeLabels = {
   [PlatformType.PDD]: '拼多多',
   [PlatformType.Douyin]: '抖音',
   [PlatformType.Kuaishou]: '快手'
+}
+
+const PlatformNameToType: Record<string, PlatformType> = {
+  'JD': PlatformType.JD,
+  'Taobao': PlatformType.Taobao,
+  'PDD': PlatformType.PDD,
+  'Douyin': PlatformType.Douyin,
+  'Kuaishou': PlatformType.Kuaishou
 }
 
 // 获取产品类型显示名称
@@ -472,11 +484,33 @@ const handleReset = () => {
   loadData()
 }
 
+const updatePlatformFromFolder = (folderPath: string) => {
+  if (!folderPath) return
+  // console.log('updatePlatformFromFolder - folderPath:', folderPath)
+  // console.log('updatePlatformFromFolder - folderOptions:', appConfigStore.folderOptions)
+  const selectedOption = appConfigStore.folderOptions.find(opt => opt.value === folderPath)
+  // console.log('updatePlatformFromFolder - selectedOption:', selectedOption)
+  if (selectedOption) {
+    const platformType = PlatformNameToType[selectedOption.label]
+    // console.log('updatePlatformFromFolder - label:', selectedOption.label, 'platformType:', platformType)
+    if (platformType !== undefined) {
+      syncForm.platform = platformType
+    }
+  }
+}
+
+watch(() => syncForm.folderPath, (newPath) => {
+  updatePlatformFromFolder(newPath)
+})
+
 // 打开同步对话框，每次打开时重新加载设置以实现热加载
 const handleSync = async () => {
-  await appConfigStore.fetchAll()
-  if (appConfigStore.folderOptions.length > 0 && !syncForm.folderPath) {
-    syncForm.folderPath = appConfigStore.folderOptions[0].value
+  await appConfigStore.fetchAll(true)
+  if (appConfigStore.folderOptions.length > 0) {
+    if (!syncForm.folderPath) {
+      syncForm.folderPath = appConfigStore.folderOptions[0].value
+    }
+    updatePlatformFromFolder(syncForm.folderPath)
   }
   if (!selectedPromptId.value && appConfigStore.defaultPrompt) {
     selectedPromptId.value = appConfigStore.defaultPrompt.Id
@@ -503,8 +537,9 @@ const handleStartSync = async () => {
   syncing.value = true
   try {
     const parameters = JSON.stringify({
-      folderPath: syncForm.folderPath,
-      promptText: syncForm.promptText
+      FolderPath: syncForm.folderPath,
+      PromptText: syncForm.promptText,
+      Platform: syncForm.platform
     })
     
     const result = await createTask(

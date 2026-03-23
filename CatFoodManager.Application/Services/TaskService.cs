@@ -200,7 +200,7 @@ public class TaskService : ITaskService
         return true;
     }
 
-    public async Task UpdateStatusAsync(long id, Domain.Enums.TaskStatus status, string? result = null, string? errorMessage = null, CancellationToken cancellationToken = default)
+    public async Task UpdateStatusAsync(long id, Domain.Enums.TaskStatus status, string? result = null, string? errorMessage = null, string? responseId = null, CancellationToken cancellationToken = default)
     {
         var task = await _taskRepository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (task == null)
@@ -214,6 +214,7 @@ public class TaskService : ITaskService
         task.Status = status;
         task.Result = result;
         task.ErrorMessage = errorMessage;
+        task.ResponseId = responseId;
         task.UpdatedAt = DateTimeOffset.UtcNow;
 
         if (status == Domain.Enums.TaskStatus.Running)

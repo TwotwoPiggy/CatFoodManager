@@ -82,7 +82,8 @@ public class GeminiOcrServiceTests
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
-            Assert.Empty(result);
+            Assert.Empty(result.Items);
+            Assert.Null(result.ResponseId);
         }
         finally
         {
@@ -110,7 +111,8 @@ public class GeminiOcrServiceTests
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
-            Assert.Empty(result);
+            Assert.Empty(result.Items);
+            Assert.Equal("test-id", result.ResponseId);
         }
         finally
         {
@@ -147,9 +149,10 @@ public class GeminiOcrServiceTests
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
-            Assert.Single(result);
-            Assert.Equal("Test", result[0].Name);
-            Assert.Equal(123, result[0].Value);
+            Assert.Single(result.Items);
+            Assert.Equal("Test", result.Items[0].Name);
+            Assert.Equal(123, result.Items[0].Value);
+            Assert.Equal("test-id", result.ResponseId);
             _repositoryMock.Verify(r => r.Add(It.IsAny<GeminiResponseEntity>()), Times.Once);
         }
         finally
@@ -179,9 +182,9 @@ public class GeminiOcrServiceTests
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
-            Assert.Single(result);
-            Assert.Equal("Test", result[0].Name);
-            Assert.Equal(456, result[0].Value);
+            Assert.Single(result.Items);
+            Assert.Equal("Test", result.Items[0].Name);
+            Assert.Equal(456, result.Items[0].Value);
         }
         finally
         {
@@ -202,7 +205,8 @@ public class GeminiOcrServiceTests
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
-            Assert.Empty(result);
+            Assert.Empty(result.Items);
+            Assert.Null(result.ResponseId);
         }
         finally
         {
@@ -313,10 +317,369 @@ public class GeminiOcrServiceTests
         var exception = Record.Exception(() => _service.ClearModelsCache("test-api-key"));
         Assert.Null(exception);
     }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldCacheEntity_WhenRepositoryThrowsException()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"Value\":123}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-response-id-123",
+                ModelVersion = "test-model",
+                UsageMetadata = new Google.GenAI.Types.GenerateContentResponseUsageMetadata
+                {
+                    TotalTokenCount = 20,
+                    PromptTokenCount = 10
+                }
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+                .Throws(new Exception("Database error"));
+
+            var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
+
+            Assert.Empty(result.Items);
+
+            var failedResponses = _service.GetFailedResponses();
+            Assert.Single(failedResponses);
+            Assert.Equal("test-response-id-123", failedResponses[0].ResponseId);
+            Assert.Equal(tempPath, failedResponses[0].FolderPath);
+            Assert.Equal("prompt", failedResponses[0].PromptText);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldClearCache_WhenSuccessful()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"Value\":123}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+                .Verifiable();
+
+            var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
+
+            Assert.Single(result.Items);
+            var failedResponses = _service.GetFailedResponses();
+            Assert.Empty(failedResponses);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void GetFailedResponses_ShouldReturnEmptyList_WhenNoFailedResponses()
+    {
+        var result = _service.GetFailedResponses();
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task RetrySaveResponseAsync_ShouldReturnFalse_WhenNoCachedResponse()
+    {
+        var result = await _service.RetrySaveResponseAsync("non-existent-response-id");
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task RetrySaveResponseAsync_ShouldSaveEntityAndClearCache_WhenCachedResponseExists()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"Value\":123}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-response-id-456",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var callCount = 0;
+            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+                .Callback(() =>
+                {
+                    callCount++;
+                    if (callCount == 1)
+                    {
+                        throw new Exception("Database error");
+                    }
+                });
+
+            await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
+
+            var failedResponses = _service.GetFailedResponses();
+            Assert.Single(failedResponses);
+
+            var retryResult = await _service.RetrySaveResponseAsync("test-response-id-456");
+
+            Assert.True(retryResult);
+            failedResponses = _service.GetFailedResponses();
+            Assert.Empty(failedResponses);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task RetrySaveResponseAsync_ShouldReturnFalse_WhenSaveStillFails()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"Value\":123}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-response-id-789",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+                .Throws(new Exception("Database error"));
+
+            await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
+
+            var retryResult = await _service.RetrySaveResponseAsync("test-response-id-789");
+
+            Assert.False(retryResult);
+            var failedResponses = _service.GetFailedResponses();
+            Assert.Single(failedResponses);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task RemoveFailedResponse_ShouldRemoveCachedResponse()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"Value\":123}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-response-id-abc",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+                .Throws(new Exception("Database error"));
+
+            await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
+
+            var failedResponses = _service.GetFailedResponses();
+            Assert.Single(failedResponses);
+
+            _service.RemoveFailedResponse("test-response-id-abc");
+
+            failedResponses = _service.GetFailedResponses();
+            Assert.Empty(failedResponses);
+
+            var retryResult = await _service.RetrySaveResponseAsync("test-response-id-abc");
+            Assert.False(retryResult);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Theory]
+    [InlineData("2024-01-15", 2024, 1, 15)]
+    [InlineData("2024/01/15", 2024, 1, 15)]
+    [InlineData("2024.01.15", 2024, 1, 15)]
+    [InlineData("2024年1月15日", 2024, 1, 15)]
+    [InlineData("2024年1月", 2024, 1, 1)]
+    [InlineData("2024-1-5", 2024, 1, 5)]
+    [InlineData("2024/1/5", 2024, 1, 5)]
+    public async Task ProcessPicturesAsync_ShouldParseVariousDateFormats(string dateString, int expectedYear, int expectedMonth, int expectedDay)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = $"[{{\"Name\":\"Test\",\"PurchasedAt\":\"{dateString}\",\"FinalPrice\":99.99}}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+                .Verifiable();
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithDate>(tempPath, "prompt");
+
+            Assert.Single(result.Items);
+            Assert.Equal("Test", result.Items[0].Name);
+            Assert.True(result.Items[0].PurchasedAt.HasValue);
+            Assert.Equal(expectedYear, result.Items[0].PurchasedAt!.Value.Year);
+            Assert.Equal(expectedMonth, result.Items[0].PurchasedAt.Value.Month);
+            Assert.Equal(expectedDay, result.Items[0].PurchasedAt.Value.Day);
+            Assert.Equal(99.99m, result.Items[0].FinalPrice);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldHandleNullPurchasedAt()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"PurchasedAt\":null,\"FinalPrice\":99.99}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithDate>(tempPath, "prompt");
+
+            Assert.Single(result.Items);
+            Assert.Null(result.Items[0].PurchasedAt);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldHandleEmptyPurchasedAt()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"PurchasedAt\":\"\",\"FinalPrice\":99.99}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithDate>(tempPath, "prompt");
+
+            Assert.Single(result.Items);
+            Assert.Null(result.Items[0].PurchasedAt);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldHandleInvalidDateFormat()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var jsonResponse = "[{\"Name\":\"Test\",\"PurchasedAt\":\"invalid-date\",\"FinalPrice\":99.99}]";
+            var response = new GeminiResponse("")
+            {
+                Text = jsonResponse,
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithDate>(tempPath, "prompt");
+
+            Assert.Single(result.Items);
+            Assert.Null(result.Items[0].PurchasedAt);
+        }
+        finally
+        {
+            Directory.Delete(tempPath);
+        }
+    }
 }
 
 public class TestDto
 {
     public string Name { get; set; } = string.Empty;
     public int Value { get; set; }
+}
+
+public class TestDtoWithDate
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime? PurchasedAt { get; set; }
+    public decimal FinalPrice { get; set; }
 }

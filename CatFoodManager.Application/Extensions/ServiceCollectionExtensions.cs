@@ -16,8 +16,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOcrPromptService, OcrPromptService>();
 
         services.AddScoped<ITaskService, TaskService>();
-        services.AddScoped<ITaskScheduler, Services.TaskScheduler>();
-        services.AddScoped<ITaskExecutor, TaskExecutor>();
+        services.AddSingleton<ITaskScheduler, Services.TaskScheduler>();
+        services.AddSingleton<ITaskExecutor, TaskExecutor>();
 
         services.AddScoped<ITaskHandler, SyncTaskHandler>();
         services.AddScoped<ITaskHandler, ImageTaskHandler>();

@@ -19,4 +19,5 @@ public class TaskItem : BaseEntity
     public DateTimeOffset? ScheduledAt { get; set; }
     public int Priority { get; set; }
     public long? ParentTaskId { get; set; }
+    public string? ResponseId { get; set; }
 }

@@ -1,10 +1,11 @@
 using CatFoodManager.Domain.Entities;
-using CatFoodManager.Domain.Enums;
 using CatFoodManager.Domain.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using AppTaskScheduler = CatFoodManager.Application.Services.TaskScheduler;
+using TaskStatus = CatFoodManager.Domain.Enums.TaskStatus;
 
 namespace CatFoodManager.Tests.Application.Services;
 
@@ -13,6 +14,7 @@ public class TaskSchedulerTests
     private readonly Mock<IRepository<TaskItem>> _taskRepositoryMock;
     private readonly Mock<IRepository<TaskConfiguration>> _configRepositoryMock;
     private readonly Mock<ILogger<AppTaskScheduler>> _loggerMock;
+    private readonly ServiceProvider _serviceProvider;
     private readonly AppTaskScheduler _scheduler;
 
     public TaskSchedulerTests()
@@ -21,9 +23,13 @@ public class TaskSchedulerTests
         _configRepositoryMock = new Mock<IRepository<TaskConfiguration>>();
         _loggerMock = new Mock<ILogger<AppTaskScheduler>>();
 
+        var services = new ServiceCollection();
+        services.AddSingleton(_taskRepositoryMock.Object);
+        services.AddSingleton(_configRepositoryMock.Object);
+        _serviceProvider = services.BuildServiceProvider();
+
         _scheduler = new AppTaskScheduler(
-            _taskRepositoryMock.Object,
-            _configRepositoryMock.Object,
+            _serviceProvider,
             _loggerMock.Object);
     }
 
@@ -49,52 +55,50 @@ public class TaskSchedulerTests
     [Fact]
     public async Task EnqueueAsync_ShouldUpdateTaskStatusToQueued()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Pending };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Pending };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         await _scheduler.StartAsync();
         await _scheduler.EnqueueAsync(1);
 
-        Assert.Equal(Domain.Enums.TaskStatus.Queued, task.Status);
+        Assert.Equal(TaskStatus.Queued, task.Status);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(task, default), Times.Once);
     }
 
     [Fact]
     public async Task EnqueueAsync_ShouldNotEnqueueRunningTask()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Running };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Running };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         await _scheduler.StartAsync();
         await _scheduler.EnqueueAsync(1);
 
-        Assert.Equal(Domain.Enums.TaskStatus.Running, task.Status);
+        Assert.Equal(TaskStatus.Running, task.Status);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<TaskItem>(), default), Times.Never);
     }
 
     [Fact]
     public async Task EnqueueAsync_ShouldNotEnqueueCompletedTask()
     {
-        var task = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Completed };
+        var task = new TaskItem { Id = 1, Status = TaskStatus.Completed };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default))
             .ReturnsAsync(task);
 
         await _scheduler.StartAsync();
         await _scheduler.EnqueueAsync(1);
 
-        Assert.Equal(Domain.Enums.TaskStatus.Completed, task.Status);
+        Assert.Equal(TaskStatus.Completed, task.Status);
         _taskRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<TaskItem>(), default), Times.Never);
     }
 
     [Fact]
     public async Task GetQueueLengthAsync_ShouldReturnQueueLength()
     {
-        await _scheduler.StartAsync();
-
-        var task1 = new TaskItem { Id = 1, Status = Domain.Enums.TaskStatus.Pending };
-        var task2 = new TaskItem { Id = 2, Status = Domain.Enums.TaskStatus.Pending };
+        var task1 = new TaskItem { Id = 1, Status = TaskStatus.Pending };
+        var task2 = new TaskItem { Id = 2, Status = TaskStatus.Pending };
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(1, default)).ReturnsAsync(task1);
         _taskRepositoryMock.Setup(r => r.GetByIdAsync(2, default)).ReturnsAsync(task2);
 

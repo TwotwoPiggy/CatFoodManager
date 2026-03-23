@@ -328,6 +328,7 @@ const handleSave = async () => {
   try {
     const result = await saveSettings(settingsForm)
     if (result.Success) {
+      appConfigStore.clearCache()
       ElMessage.success(result.Message || '设置保存成功')
     } else {
       ElMessage.error(result.Message || '保存失败')
@@ -376,27 +377,6 @@ const handleClearPlatformFolder = (platformName: string) => {
   delete settingsForm.App.PlatformFolders[platformName]
 }
 
-const handleSyncFromPictures = async () => {
-  if (!ocrFolderPath.value) {
-    ElMessage.warning('请先选择图片文件夹')
-    return
-  }
-  
-  syncing.value = true
-  try {
-    const result = await syncFromPictures(ocrFolderPath.value, promptText.value)
-    if (result.Success) {
-      ElMessage.success(`同步成功，共处理 ${result.Count} 条记录`)
-    } else {
-      ElMessage.error(result.Message || '同步失败')
-    }
-  } catch (error) {
-    ElMessage.error('同步时发生错误')
-    console.error(error)
-  } finally {
-    syncing.value = false
-  }
-}
 
 const loadOcrPrompts = async () => {
   await appConfigStore.fetchOcrPrompts()
@@ -513,7 +493,6 @@ onMounted(async () => {
   await loadSettings()
   await loadModels()
   await loadOcrPrompts()
-  appConfigStore.clearCache()
 })
 </script>
 

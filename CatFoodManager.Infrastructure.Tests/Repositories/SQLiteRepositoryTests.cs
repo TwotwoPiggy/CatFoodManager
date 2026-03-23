@@ -95,6 +95,21 @@ public class SQLiteRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task AddRangeAsync_ShouldUpdateEntityIds()
+    {
+        var entities = new[]
+        {
+            new TestEntity { Name = "Test1" },
+            new TestEntity { Name = "Test2" },
+            new TestEntity { Name = "Test3" }
+        };
+
+        await _repository.AddRangeAsync(entities);
+
+        Assert.All(entities, e => Assert.True(e.Id > 0, $"Expected Id > 0, but got {e.Id}"));
+    }
+
+    [Fact]
     public async Task UpdateAsync_ShouldUpdateEntity()
     {
         var entity = new TestEntity { Name = "Original" };
@@ -160,9 +175,17 @@ public class SQLiteRepositoryTests : IDisposable
     public void Dispose()
     {
         _dbContext?.Dispose();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
         if (File.Exists(_testDbPath))
         {
-            File.Delete(_testDbPath);
+            try
+            {
+                File.Delete(_testDbPath);
+            }
+            catch
+            {
+            }
         }
     }
 
