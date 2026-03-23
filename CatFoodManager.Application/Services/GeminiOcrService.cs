@@ -14,8 +14,16 @@ using IApplicationGeminiOcrService = CatFoodManager.Application.Interfaces.IGemi
 
 namespace CatFoodManager.Application.Services;
 
+/// <summary>
+/// Gemini OCR服务类，使用Google Gemini AI进行图片文字识别。
+/// Gemini OCR service class, using Google Gemini AI for image text recognition.
+/// </summary>
 public class GeminiOcrService : IApplicationGeminiOcrService
 {
+    /// <summary>
+    /// 允许的图片扩展名集合。
+    /// Set of allowed image extensions.
+    /// </summary>
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".jpg",
@@ -32,6 +40,10 @@ public class GeminiOcrService : IApplicationGeminiOcrService
     private const string FailedListCacheKey = "GeminiResponse_FailedList";
     private static readonly TimeSpan FailedResponseCacheDuration = TimeSpan.FromHours(24);
 
+    /// <summary>
+    /// JSON序列化选项。
+    /// JSON serialization options.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -43,6 +55,14 @@ public class GeminiOcrService : IApplicationGeminiOcrService
     private readonly ILogger<GeminiOcrService> _logger;
     private readonly IMemoryCache _cache;
 
+    /// <summary>
+    /// 构造函数。
+    /// Constructor.
+    /// </summary>
+    /// <param name="agentService">Gemini代理服务实例 / Gemini agent service instance</param>
+    /// <param name="repository">仓储实例 / Repository instance</param>
+    /// <param name="logger">日志记录器 / Logger</param>
+    /// <param name="cache">内存缓存实例 / Memory cache instance</param>
     public GeminiOcrService(
         IGeminiAgentService agentService,
         IRepository repository,
@@ -55,12 +75,25 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         _cache = cache;
     }
 
+    /// <summary>
+    /// 验证模型是否可用。
+    /// Validates whether the model is available.
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>模型是否可用 / Whether the model is available</returns>
     public async Task<bool> ValidateModelAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Validating Gemini model");
         return await _agentService.ValidateModelAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// 获取可用模型列表。
+    /// Gets the list of available models.
+    /// </summary>
+    /// <param name="apiKey">API密钥（可选）/ API key (optional)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>模型信息列表 / List of model information</returns>
     public async Task<IReadOnlyList<ModelInfo>> GetModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
     {
         var cacheKey = GetCacheKey(apiKey);
@@ -85,6 +118,11 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         return result;
     }
 
+    /// <summary>
+    /// 清除模型缓存。
+    /// Clears the model cache.
+    /// </summary>
+    /// <param name="apiKey">API密钥（可选）/ API key (optional)</param>
     public void ClearModelsCache(string? apiKey = null)
     {
         var cacheKey = GetCacheKey(apiKey);
@@ -92,6 +130,12 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         _logger.LogInformation("Cleared models cache for key: {CacheKey}", cacheKey);
     }
 
+    /// <summary>
+    /// 获取缓存键。
+    /// Gets the cache key.
+    /// </summary>
+    /// <param name="apiKey">API密钥 / API key</param>
+    /// <returns>缓存键 / Cache key</returns>
     private static string GetCacheKey(string? apiKey)
     {
         if (string.IsNullOrEmpty(apiKey))
@@ -103,17 +147,38 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         return $"{CacheKeyPrefix}{hash}";
     }
 
+    /// <summary>
+    /// 计算API密钥哈希值。
+    /// Computes the API key hash.
+    /// </summary>
+    /// <param name="apiKey">API密钥 / API key</param>
+    /// <returns>哈希字符串 / Hash string</returns>
     private static string ComputeApiKeyHash(string apiKey)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
         return Convert.ToHexString(bytes)[..16];
     }
 
+    /// <summary>
+    /// 获取失败响应缓存键。
+    /// Gets the failed response cache key.
+    /// </summary>
+    /// <param name="responseId">响应ID / Response ID</param>
+    /// <returns>缓存键 / Cache key</returns>
     private static string GetFailedResponseCacheKey(string responseId)
     {
         return $"{FailedResponseCacheKeyPrefix}{responseId}";
     }
 
+    /// <summary>
+    /// 添加到失败列表。
+    /// Adds to the failed list.
+    /// </summary>
+    /// <param name="responseId">响应ID / Response ID</param>
+    /// <param name="taskId">任务ID / Task ID</param>
+    /// <param name="folderPath">文件夹路径 / Folder path</param>
+    /// <param name="promptText">提示文本 / Prompt text</param>
+    /// <param name="errorMessage">错误信息 / Error message</param>
     private void AddToFailedList(string responseId, long taskId, string folderPath, string promptText, string? errorMessage)
     {
         var list = _cache.TryGetValue(FailedListCacheKey, out List<FailedResponseCacheItem>? existingList)
@@ -126,6 +191,11 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         _cache.Set(FailedListCacheKey, list, FailedResponseCacheDuration);
     }
 
+    /// <summary>
+    /// 从失败列表中移除。
+    /// Removes from the failed list.
+    /// </summary>
+    /// <param name="responseId">响应ID / Response ID</param>
     private void RemoveFromFailedList(string responseId)
     {
         if (_cache.TryGetValue(FailedListCacheKey, out List<FailedResponseCacheItem>? list))
@@ -134,6 +204,15 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         }
     }
 
+    /// <summary>
+    /// 处理图片文件夹中的图片并返回识别结果。
+    /// Processes images in the folder and returns recognition results.
+    /// </summary>
+    /// <typeparam name="T">返回的DTO类型 / The DTO type to return</typeparam>
+    /// <param name="folderPath">图片文件夹路径 / Image folder path</param>
+    /// <param name="promptText">提示文本 / Prompt text</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>处理结果 / Processing result</returns>
     public async Task<ProcessPicturesResult<T>> ProcessPicturesAsync<T>(string folderPath, string promptText, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Processing pictures from folder: {FolderPath}", folderPath);
@@ -225,6 +304,12 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         }
     }
 
+    /// <summary>
+    /// 清理JSON字符串中的Markdown标记。
+    /// Cleans Markdown tags from JSON string.
+    /// </summary>
+    /// <param name="text">原始文本 / Original text</param>
+    /// <returns>清理后的JSON字符串 / Cleaned JSON string</returns>
     private static string CleanJsonMarkdown(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -248,6 +333,11 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         return trimmed.Trim();
     }
 
+    /// <summary>
+    /// 获取失败的响应列表。
+    /// Gets the list of failed responses.
+    /// </summary>
+    /// <returns>失败响应缓存项列表 / List of failed response cache items</returns>
     public IReadOnlyList<FailedResponseCacheItem> GetFailedResponses()
     {
         if (_cache.TryGetValue(FailedListCacheKey, out List<FailedResponseCacheItem>? list))
@@ -258,6 +348,17 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         return [];
     }
 
+    /// <summary>
+    /// 重试保存失败的响应数据到数据库。
+    /// 当 OCR 处理成功但数据库保存失败时，响应数据会被缓存到内存中，
+    /// 调用此方法可重新尝试将缓存的数据持久化到数据库。
+    /// Retries saving failed response data to the database.
+    /// When OCR processing succeeds but database save fails, response data is cached in memory.
+    /// Calling this method attempts to persist the cached data to the database again.
+    /// </summary>
+    /// <param name="responseId">响应的唯一标识符 / Unique identifier of the response</param>
+    /// <returns>true 表示保存成功或缓存已清除；false 表示缓存不存在或保存失败
+    /// true if save succeeded or cache cleared; false if cache doesn't exist or save failed</returns>
     public Task<bool> RetrySaveResponseAsync(string responseId)
     {
         var cacheKey = GetFailedResponseCacheKey(responseId);
@@ -271,8 +372,10 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         try
         {
             _repository.Add(entity);
+
             _cache.Remove(cacheKey);
             RemoveFromFailedList(responseId);
+
             _logger.LogInformation("Successfully saved cached response for responseId: {ResponseId}", responseId);
             return Task.FromResult(true);
         }
@@ -283,6 +386,11 @@ public class GeminiOcrService : IApplicationGeminiOcrService
         }
     }
 
+    /// <summary>
+    /// 移除失败的响应记录。
+    /// Removes a failed response record.
+    /// </summary>
+    /// <param name="responseId">响应ID / Response ID</param>
     public void RemoveFailedResponse(string responseId)
     {
         var cacheKey = GetFailedResponseCacheKey(responseId);

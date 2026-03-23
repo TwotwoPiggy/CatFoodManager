@@ -8,7 +8,7 @@ public class DatabaseSettingsTests
     [Fact]
     public void DatabaseSettings_ShouldHaveCorrectSectionName()
     {
-        Assert.Equal("DatabaseSettings", DatabaseSettings.SectionName);
+        Assert.Equal("Database", DatabaseSettings.SectionName);
     }
 
     [Fact]
@@ -17,7 +17,9 @@ public class DatabaseSettingsTests
         var settings = new DatabaseSettings();
 
         Assert.Equal(string.Empty, settings.ConnectionString);
-        Assert.Equal("SQLite", settings.DatabaseType);
+        Assert.Equal(string.Empty, settings.DatabasePath);
+        Assert.True(settings.EnableForeignKeys);
+        Assert.Equal(30, settings.CommandTimeout);
     }
 
     [Fact]
@@ -26,10 +28,14 @@ public class DatabaseSettingsTests
         var settings = new DatabaseSettings
         {
             ConnectionString = "Data Source=test.db",
-            DatabaseType = "PostgreSQL"
+            DatabasePath = "/data/test.db",
+            EnableForeignKeys = false,
+            CommandTimeout = 60
         };
 
         Assert.Equal("Data Source=test.db", settings.ConnectionString);
-        Assert.Equal("PostgreSQL", settings.DatabaseType);
+        Assert.Equal("/data/test.db", settings.DatabasePath);
+        Assert.False(settings.EnableForeignKeys);
+        Assert.Equal(60, settings.CommandTimeout);
     }
 }

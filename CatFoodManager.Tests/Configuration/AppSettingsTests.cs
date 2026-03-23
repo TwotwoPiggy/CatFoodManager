@@ -16,8 +16,8 @@ public class AppSettingsTests
     {
         var settings = new AppSettings();
 
-        Assert.Empty(settings.PlatformFolders);
-        Assert.Equal(string.Empty, settings.TessdataPath);
+        Assert.NotNull(settings.Database);
+        Assert.NotNull(settings.Gemini);
     }
 
     [Fact]
@@ -25,16 +25,17 @@ public class AppSettingsTests
     {
         var settings = new AppSettings
         {
-            PlatformFolders = new Dictionary<string, string>
+            Database = new DatabaseSettings
             {
-                { "京东", "C:\\JDPictures" },
-                { "淘宝", "C:\\TaobaoPictures" }
+                ConnectionString = "Data Source=test.db"
             },
-            TessdataPath = "C:\\Tessdata"
+            Gemini = new GeminiSettings
+            {
+                ApiKey = "test-key"
+            }
         };
 
-        Assert.Equal("C:\\JDPictures", settings.PlatformFolders["京东"]);
-        Assert.Equal("C:\\TaobaoPictures", settings.PlatformFolders["淘宝"]);
-        Assert.Equal("C:\\Tessdata", settings.TessdataPath);
+        Assert.Equal("Data Source=test.db", settings.Database.ConnectionString);
+        Assert.Equal("test-key", settings.Gemini.ApiKey);
     }
 }

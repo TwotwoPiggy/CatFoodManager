@@ -27,7 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CatFoodManager\CatFoodManager.csproj" />
     <ProjectReference Include="..\CatFoodManager.Application\CatFoodManager.Application.csproj" />
     <ProjectReference Include="..\CatFoodManager.Core\CatFoodManager.Core.csproj" />
     <ProjectReference Include="..\CatFoodManager.Domain\CatFoodManager.Domain.csproj" />

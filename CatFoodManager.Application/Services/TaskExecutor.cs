@@ -7,6 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace CatFoodManager.Application.Services;
 
+/// <summary>
+/// 任务执行器类，提供任务执行和管理功能。
+/// Task executor class, providing task execution and management functionality.
+/// </summary>
 public class TaskExecutor : ITaskExecutor
 {
     private readonly IServiceProvider _serviceProvider;
@@ -16,6 +20,12 @@ public class TaskExecutor : ITaskExecutor
     private readonly SemaphoreSlim _concurrencySemaphore;
     private readonly int _maxConcurrentTasks;
 
+    /// <summary>
+    /// 构造函数。
+    /// Constructor.
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者 / Service provider</param>
+    /// <param name="logger">日志记录器 / Logger</param>
     public TaskExecutor(
         IServiceProvider serviceProvider,
         ILogger<TaskExecutor> logger)
@@ -28,6 +38,12 @@ public class TaskExecutor : ITaskExecutor
         _concurrencySemaphore = new SemaphoreSlim(_maxConcurrentTasks, _maxConcurrentTasks);
     }
 
+    /// <summary>
+    /// 执行指定任务。
+    /// Executes the specified task.
+    /// </summary>
+    /// <param name="taskId">任务ID / Task ID</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task ExecuteAsync(long taskId, CancellationToken cancellationToken = default)
     {
         using var scope = _serviceProvider.CreateScope();
@@ -97,11 +113,24 @@ public class TaskExecutor : ITaskExecutor
         }
     }
 
+    /// <summary>
+    /// 检查任务是否正在运行。
+    /// Checks if a task is running.
+    /// </summary>
+    /// <param name="taskId">任务ID / Task ID</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>是否正在运行 / Whether running</returns>
     public Task<bool> IsRunningAsync(long taskId, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_runningTasks.ContainsKey(taskId));
     }
 
+    /// <summary>
+    /// 终止指定任务。
+    /// Terminates the specified task.
+    /// </summary>
+    /// <param name="taskId">任务ID / Task ID</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task TerminateAsync(long taskId, CancellationToken cancellationToken = default)
     {
         if (_runningTasks.TryGetValue(taskId, out var cts))
@@ -111,11 +140,22 @@ public class TaskExecutor : ITaskExecutor
         }
     }
 
+    /// <summary>
+    /// 获取正在运行的任务数量。
+    /// Gets the count of running tasks.
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>正在运行的任务数量 / Count of running tasks</returns>
     public Task<int> GetRunningCountAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_runningTasks.Count);
     }
 
+    /// <summary>
+    /// 获取任务配置。
+    /// Gets task configuration.
+    /// </summary>
+    /// <returns>任务配置 / Task configuration</returns>
     private async Task<Domain.Entities.TaskConfiguration> GetConfigurationAsync()
     {
         using var scope = _serviceProvider.CreateScope();

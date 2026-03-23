@@ -5,8 +5,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CatFoodManager.Application.Extensions;
 
+/// <summary>
+/// 服务集合扩展方法类，/// Service collection extension methods class.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// 注册应用层服务。
+    /// Registers application layer services.
+    /// </summary>
+    /// <param name="services">服务集合 / Service collection</param>
+    /// <returns>服务集合 / Service collection</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<ICatFoodService, CatFoodService>();

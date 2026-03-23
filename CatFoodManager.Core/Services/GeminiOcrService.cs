@@ -6,8 +6,16 @@ using Twotwo.Agent.Types;
 
 namespace CatFoodManager.Core.Services
 {
+    /// <summary>
+    /// Gemini OCR服务类，使用Google Gemini AI进行图片文字识别。
+    /// Gemini OCR service class, using Google Gemini AI for image text recognition.
+    /// </summary>
     public class GeminiOcrService : GenericServiceBase<GeminiResponseEntity>, IGeminiOcrService
     {
+        /// <summary>
+        /// 允许的图片扩展名集合。
+        /// Set of allowed image extensions.
+        /// </summary>
         private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".jpg",
@@ -19,17 +27,38 @@ namespace CatFoodManager.Core.Services
 
         private readonly IGeminiAgentService _agentService;
 
+        /// <summary>
+        /// 构造函数。
+        /// Constructor.
+        /// </summary>
+        /// <param name="repo">仓储实例 / Repository instance</param>
+        /// <param name="agentService">Gemini代理服务实例 / Gemini agent service instance</param>
+        /// <param name="needMigrate">是否需要执行数据库迁移 / Whether database migration is needed</param>
         public GeminiOcrService(IRepository repo, IGeminiAgentService agentService, bool needMigrate = true)
             : base(repo, needMigrate)
         {
             _agentService = agentService ?? throw new ArgumentNullException(nameof(agentService));
         }
 
+        /// <summary>
+        /// 验证模型是否可用。
+        /// Validates whether the model is available.
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+        /// <returns>模型是否可用 / Whether the model is available</returns>
         public async Task<bool> ValidateModelAsync(CancellationToken cancellationToken = default)
         {
             return await _agentService.ValidateModelAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// 处理图片文件夹中的图片并返回识别结果。
+        /// Processes images in the folder and returns recognition results.
+        /// </summary>
+        /// <typeparam name="T">返回的DTO类型 / The DTO type to return</typeparam>
+        /// <param name="folderPath">图片文件夹路径 / Image folder path</param>
+        /// <param name="promptText">提示文本 / Prompt text</param>
+        /// <returns>识别结果列表 / List of recognition results</returns>
         public async Task<List<T>> ProcessPicAsync<T>(string folderPath, string promptText)
         {
             if (string.IsNullOrEmpty(folderPath)) throw new ArgumentNullException(nameof(folderPath));
@@ -79,6 +108,12 @@ namespace CatFoodManager.Core.Services
             }
         }
 
+        /// <summary>
+        /// 清理JSON字符串中的Markdown标记。
+        /// Cleans Markdown tags from JSON string.
+        /// </summary>
+        /// <param name="text">原始文本 / Original text</param>
+        /// <returns>清理后的JSON字符串 / Cleaned JSON string</returns>
         private static string CleanJsonMarkdown(string text)
         {
             if (string.IsNullOrWhiteSpace(text))

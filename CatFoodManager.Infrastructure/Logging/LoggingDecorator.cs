@@ -1,47 +1,90 @@
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 
 namespace CatFoodManager.Infrastructure.Logging;
 
-public class LoggingDecorator<T> where T : class
+/// <summary>
+/// 日志装饰器，为服务添加日志记录功能。
+/// Logging decorator, adding logging functionality to services.
+/// </summary>
+/// <typeparam name="TService">服务接口类型 / Service interface type</typeparam>
+public class LoggingDecorator<TService> : DispatchProxy where TService : class
 {
-    private readonly T _decorated;
-    private readonly ILogger<LoggingDecorator<T>> _logger;
+    private TService? _decorated;
+    private ILogger<TService>? _logger;
 
-    public LoggingDecorator(T decorated, ILogger<LoggingDecorator<T>> logger)
+    /// <summary>
+    /// 创建装饰器实例。
+    /// Creates a decorator instance.
+    /// </summary>
+    /// <param name="decorated">被装饰的服务实例 / Decorated service instance</param>
+    /// <param name="logger">日志记录器 / Logger</param>
+    /// <returns>装饰后的服务实例 / Decorated service instance</returns>
+    public static TService Create(TService decorated, ILogger<TService> logger)
     {
-        _decorated = decorated ?? throw new ArgumentNullException(nameof(decorated));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        var proxy = Create<TService, LoggingDecorator<TService>>() as LoggingDecorator<TService>;
+        if (proxy != null)
+        {
+            proxy._decorated = decorated;
+            proxy._logger = logger;
+        }
+        return (proxy as TService)!;
     }
 
-    public async Task<TResult> ExecuteAsync<TResult>(Func<T, Task<TResult>> func, string operationName)
+    /// <summary>
+    /// 调用方法。
+    /// Invokes a method.
+    /// </summary>
+    /// <param name="method">方法信息 / Method info</param>
+    /// <param name="args">方法参数 / Method arguments</param>
+    /// <returns>方法返回值 / Method return value</returns>
+    protected override object? Invoke(MethodInfo? method, object?[]? args)
     {
-        _logger.LogInformation("Starting operation: {OperationName}", operationName);
+        if (method == null || _decorated == null || _logger == null)
+        {
+            return null;
+        }
+
+        var methodName = method.Name;
 
         try
         {
-            var result = await func(_decorated);
-            _logger.LogInformation("Operation completed: {OperationName}", operationName);
+            _logger.LogDebug("Entering {MethodName} with args: {Args}", methodName, args);
+
+            var result = method.Invoke(_decorated, args);
+
+            if (result is Task task)
+            {
+                return HandleAsyncTask(task, methodName);
+            }
+
+            _logger.LogDebug("Exiting {MethodName}", methodName);
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Operation failed: {OperationName}", operationName);
+            _logger.LogError(ex, "Error in {MethodName}: {Message}", methodName, ex.InnerException?.Message ?? ex.Message);
             throw;
         }
     }
 
-    public async Task ExecuteAsync(Func<T, Task> func, string operationName)
+    /// <summary>
+    /// 处理异步任务。
+    /// Handles an async task.
+    /// </summary>
+    /// <param name="task">异步任务 / Async task</param>
+    /// <param name="methodName">方法名称 / Method name</param>
+    /// <returns>异步任务 / Async task</returns>
+    private async Task HandleAsyncTask(Task task, string methodName)
     {
-        _logger.LogInformation("Starting operation: {OperationName}", operationName);
-
         try
         {
-            await func(_decorated);
-            _logger.LogInformation("Operation completed: {OperationName}", operationName);
+            await task.ConfigureAwait(false);
+            _logger.LogDebug("Exiting {MethodName}", methodName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Operation failed: {OperationName}", operationName);
+            _logger.LogError(ex, "Error in {MethodName}: {Message}", methodName, ex.Message);
             throw;
         }
     }

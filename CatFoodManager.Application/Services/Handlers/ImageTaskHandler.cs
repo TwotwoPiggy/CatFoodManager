@@ -5,22 +5,46 @@ using Microsoft.Extensions.Logging;
 
 namespace CatFoodManager.Application.Services.Handlers;
 
+/// <summary>
+/// 图片任务处理器，处理图片删除和移动任务。
+/// Image task handler, handling image delete and move tasks.
+/// </summary>
 public class ImageTaskHandler : ITaskHandler
 {
     private readonly ILogger<ImageTaskHandler> _logger;
 
+    /// <summary>
+    /// JSON序列化选项。
+    /// JSON serialization options.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// 任务类型。
+    /// Task type.
+    /// </summary>
     public TaskType TaskType => TaskType.ImageDelete;
 
+    /// <summary>
+    /// 构造函数。
+    /// Constructor.
+    /// </summary>
+    /// <param name="logger">日志记录器 / Logger</param>
     public ImageTaskHandler(ILogger<ImageTaskHandler> logger)
     {
         _logger = logger;
     }
 
+    /// <summary>
+    /// 处理图片任务。
+    /// Handles the image task.
+    /// </summary>
+    /// <param name="parameters">任务参数 / Task parameters</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>任务处理结果 / Task handling result</returns>
     public async Task<TaskResult> HandleAsync(string parameters, CancellationToken cancellationToken = default)
     {
         try
@@ -77,10 +101,28 @@ public class ImageTaskHandler : ITaskHandler
         }
     }
 
+    /// <summary>
+    /// 图片参数类。
+    /// Image parameters class.
+    /// </summary>
     private class ImageParameters
     {
+        /// <summary>
+        /// 操作类型（delete/move）。
+        /// Action type (delete/move).
+        /// </summary>
         public string? Action { get; set; }
+
+        /// <summary>
+        /// 图片路径。
+        /// Image path.
+        /// </summary>
         public string? ImagePath { get; set; }
+
+        /// <summary>
+        /// 目标路径（移动操作时使用）。
+        /// Destination path (used for move action).
+        /// </summary>
         public string? DestinationPath { get; set; }
     }
 }

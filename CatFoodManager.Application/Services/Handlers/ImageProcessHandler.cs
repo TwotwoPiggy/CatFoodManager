@@ -5,22 +5,46 @@ using Microsoft.Extensions.Logging;
 
 namespace CatFoodManager.Application.Services.Handlers;
 
+/// <summary>
+/// 图片处理任务处理器，处理图片AI识别任务。
+/// Image process task handler, handling image AI recognition tasks.
+/// </summary>
 public class ImageProcessHandler : ITaskHandler
 {
     private readonly ILogger<ImageProcessHandler> _logger;
 
+    /// <summary>
+    /// JSON序列化选项。
+    /// JSON serialization options.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// 任务类型。
+    /// Task type.
+    /// </summary>
     public TaskType TaskType => TaskType.ImageProcess;
 
+    /// <summary>
+    /// 构造函数。
+    /// Constructor.
+    /// </summary>
+    /// <param name="logger">日志记录器 / Logger</param>
     public ImageProcessHandler(ILogger<ImageProcessHandler> logger)
     {
         _logger = logger;
     }
 
+    /// <summary>
+    /// 处理图片处理任务。
+    /// Handles the image process task.
+    /// </summary>
+    /// <param name="parameters">任务参数 / Task parameters</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>任务处理结果 / Task handling result</returns>
     public async Task<TaskResult> HandleAsync(string parameters, CancellationToken cancellationToken = default)
     {
         try
@@ -31,8 +55,8 @@ public class ImageProcessHandler : ITaskHandler
                 return TaskResult.Failed("Invalid parameters: ImagePath is required");
             }
 
-            _logger.LogInformation("Processing image: {Path} with prompt: {Prompt}", 
-                processParams.ImagePath, 
+            _logger.LogInformation("Processing image: {Path} with prompt: {Prompt}",
+                processParams.ImagePath,
                 processParams.PromptText?[..Math.Min(50, processParams.PromptText.Length)]);
 
             if (!File.Exists(processParams.ImagePath))
@@ -66,10 +90,28 @@ public class ImageProcessHandler : ITaskHandler
         }
     }
 
+    /// <summary>
+    /// 图片处理参数类。
+    /// Image process parameters class.
+    /// </summary>
     private class ImageProcessParameters
     {
+        /// <summary>
+        /// 图片路径。
+        /// Image path.
+        /// </summary>
         public string? ImagePath { get; set; }
+
+        /// <summary>
+        /// 提示文本。
+        /// Prompt text.
+        /// </summary>
         public string? PromptText { get; set; }
+
+        /// <summary>
+        /// 输出路径。
+        /// Output path.
+        /// </summary>
         public string? OutputPath { get; set; }
     }
 }

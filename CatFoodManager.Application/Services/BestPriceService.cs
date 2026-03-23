@@ -6,29 +6,60 @@ using Microsoft.Extensions.Logging;
 
 namespace CatFoodManager.Application.Services;
 
+/// <summary>
+/// 最低价格服务类，提供最低价格相关的业务操作。
+/// Best price service class, providing best price-related business operations.
+/// </summary>
 public class BestPriceService : IBestPriceService
 {
     private readonly IRepository<BestPrice> _repository;
     private readonly ILogger<BestPriceService> _logger;
 
+    /// <summary>
+    /// 构造函数。
+    /// Constructor.
+    /// </summary>
+    /// <param name="repository">仓储实例 / Repository instance</param>
+    /// <param name="logger">日志记录器 / Logger</param>
     public BestPriceService(IRepository<BestPrice> repository, ILogger<BestPriceService> logger)
     {
         _repository = repository;
         _logger = logger;
     }
 
+    /// <summary>
+    /// 根据ID获取最低价格记录。
+    /// Gets a best price record by ID.
+    /// </summary>
+    /// <param name="id">记录ID / Record ID</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>最低价格记录或null / Best price record or null</returns>
     public async Task<BestPrice?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Getting best price by id: {Id}", id);
         return await _repository.GetByIdAsync(id, cancellationToken);
     }
 
+    /// <summary>
+    /// 获取所有最低价格记录。
+    /// Gets all best price records.
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>最低价格记录列表 / List of best price records</returns>
     public async Task<IReadOnlyList<BestPrice>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Getting all best prices");
         return await _repository.GetAllAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// 分页获取最低价格记录。
+    /// Gets best price records with pagination.
+    /// </summary>
+    /// <param name="page">页码 / Page number</param>
+    /// <param name="pageSize">每页大小 / Page size</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>分页结果 / Paged result</returns>
     public async Task<PagedResult<BestPrice>> GetPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Getting paged best prices: page {Page}, pageSize {PageSize}", page, pageSize);
@@ -45,18 +76,37 @@ public class BestPriceService : IBestPriceService
         };
     }
 
+    /// <summary>
+    /// 搜索最低价格记录。
+    /// Searches best price records.
+    /// </summary>
+    /// <param name="keyword">搜索关键词 / Search keyword</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>最低价格记录列表 / List of best price records</returns>
     public async Task<IReadOnlyList<BestPrice>> SearchAsync(string keyword, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Searching best prices with keyword: {Keyword}", keyword);
         return await _repository.FindAsync(e => e.Name != null && e.Name.Contains(keyword), cancellationToken);
     }
 
+    /// <summary>
+    /// 添加最低价格记录。
+    /// Adds a best price record.
+    /// </summary>
+    /// <param name="entity">要添加的实体 / Entity to add</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task AddAsync(BestPrice entity, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Adding best price: {Name}", entity.Name);
         await _repository.AddAsync(entity, cancellationToken);
     }
 
+    /// <summary>
+    /// 批量添加最低价格记录。
+    /// Adds a range of best price records.
+    /// </summary>
+    /// <param name="entities">要添加的实体集合 / Collection of entities to add</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task AddRangeAsync(IEnumerable<BestPrice> entities, CancellationToken cancellationToken = default)
     {
         var entityList = entities.ToList();
@@ -64,12 +114,24 @@ public class BestPriceService : IBestPriceService
         await _repository.AddRangeAsync(entityList, cancellationToken);
     }
 
+    /// <summary>
+    /// 更新最低价格记录。
+    /// Updates a best price record.
+    /// </summary>
+    /// <param name="entity">要更新的实体 / Entity to update</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task UpdateAsync(BestPrice entity, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating best price: {Id}", entity.Id);
         await _repository.UpdateAsync(entity, cancellationToken);
     }
 
+    /// <summary>
+    /// 删除最低价格记录。
+    /// Deletes a best price record.
+    /// </summary>
+    /// <param name="id">要删除的记录ID / ID of record to delete</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Deleting best price: {Id}", id);
