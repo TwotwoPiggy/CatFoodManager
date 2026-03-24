@@ -1,25 +1,32 @@
-﻿using SQLite;
+using SQLite;
 using SQLiteNetExtensions.Attributes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CatFoodManager.Core.Models
 {
-	public class Brand
-	{
-		[PrimaryKey, AutoIncrement]
-		public long Id { get; set; }
+    /// <summary>
+    /// 品牌实体，表示猫粮品牌信息。
+    /// Brand entity, representing cat food brand information.
+    /// </summary>
+    public class Brand
+    {
+        /// <summary>
+        /// 品牌唯一标识符。
+        /// Unique identifier for the brand.
+        /// </summary>
+        [PrimaryKey, AutoIncrement]
+        public long Id { get; set; }
 
-		public string Name { get; set; }
+        /// <summary>
+        /// 品牌名称。
+        /// Name of the brand.
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
 
-		[OneToMany(CascadeOperations = CascadeOperation.All)]
-		public IList<CatFood> CatFoods { get; set; }
-
-		//[ManyToMany(typeof(Factory), CascadeOperations = CascadeOperation.All)]
-		//public IList<Factory> Factories { get; set; }
-		
+        /// <summary>
+        /// 该品牌下的猫粮产品列表。
+        /// List of cat food products under this brand.
+        /// </summary>
+        [OneToMany(CascadeOperations = CascadeOperation.All)]
+        public IList<CatFood> CatFoods { get; set; } = [];
     }
 }

@@ -361,3 +361,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# User-specific configuration files
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+/CatFoodManager/appsettings.json
+/重构方案.md
