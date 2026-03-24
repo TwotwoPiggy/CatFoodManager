@@ -6,12 +6,12 @@
 
 ## 🇨🇳 中文版 (Chinese Version)
 
-CatFoodManager 是一个现代化的桌面混合应用程序，旨在帮助猫主人管理猫粮库存，追踪各大电商平台的历史降价情况，并维护各种猫粮品牌的数据。它包含基于 .NET 10 的完整整洁架构 (Clean Architecture) 后端，以及使用 Vue 3 和 Element Plus 构建的动态、响应式前端（通过 CefSharp 托管在 WinForms 容器中）。
+CatFoodManager 是一个现代化的桌面混合应用程序，旨在帮助猫主人管理猫粮库存，用户可记录各大电商平台的历史购买价格，并维护各种猫粮品牌的数据。它包含基于 .NET 10 的完整整洁架构 (Clean Architecture) 后端，以及使用 Vue 3 和 Element Plus 构建的动态、响应式前端（通过 CefSharp 托管在 WinForms 容器中）。
 
 ### 🌟 核心功能
 
 * **库存管理**: 记录猫粮库存、类型（如干粮、湿粮、零食）、重量、购买价格以及投喂进度。
-* **底价追踪**: 监控各平台（淘宝、京东、拼多多等）的历史最低价格，做出明智的购买决策。
+* **底价管理**: 记录各平台（淘宝、京东、拼多多等）的最低购买价格，做出明智的购买决策。
 * **品牌与代工厂库**: 管理猫粮品牌及其对应代工厂的数据库。
 * **智能 OCR 集成**: 内置 Google Gemini AI OCR 功能，可直接从图片或截图中自动提取和同步产品数据或价格。
 * **图片管理**: 原生支持在本地存储和查看产品及票据图片。
@@ -89,12 +89,12 @@ CatFoodManager/
 
 ## 🇺🇸 English Version
 
-CatFoodManager is a modern desktop hybrid application designed to help owners manage their cat's food inventory, track historical price drops across e-commerce platforms, and maintain records of various cat food brands. It features a complete Clean Architecture-based backend in .NET 10, accompanied by a dynamic, responsive frontend built with Vue 3 and Element Plus, hosted inside a WinForms container using CefSharp.
+CatFoodManager is a modern desktop hybrid application designed to help owners manage their cat's food inventory, manage historical price drops across e-commerce platforms, and maintain records of various cat food brands. It features a complete Clean Architecture-based backend in .NET 10, accompanied by a dynamic, responsive frontend built with Vue 3 and Element Plus, hosted inside a WinForms container using CefSharp.
 
 ### 🌟 Key Features
 
 * **Inventory Management**: Keep track of cat food stock, types (e.g., dry food, wet food, snacks), weights, purchase prices, and feeding progress.
-* **Best Price Tracking**: Monitor historical low prices across various platforms (Taobao, JD.com, Pinduoduo, etc.) to make informed purchasing decisions.
+* **Best Price Tracking**: manage historical low prices across various platforms (Taobao, JD.com, Pinduoduo, etc.) to make informed purchasing decisions.
 * **Brand & Factory Registry**: Manage a database of cat food brands and their corresponding OEMs/factories.
 * **Smart OCR Integration**: Features built-in Google Gemini AI OCR capabilities to automatically extract and sync product data or prices directly from images or screenshots.
 * **Image Management**: First-class support for storing and viewing product and receipt images locally.
