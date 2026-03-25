@@ -81,18 +81,46 @@ export function setCefSharpReady(): void {
 
 (window as any).setCefSharpReady = setCefSharpReady
 
+const MAX_WAIT_TIME = 10000
+const CHECK_INTERVAL = 50
+
 export async function waitForCefSharp(): Promise<void> {
   if (cefSharpReady) return
-  await cefSharpReadyPromise
+  
+  if (isCefSharpReady()) {
+    cefSharpReady = true
+    return
+  }
+  
+  const startTime = Date.now()
+  while (!cefSharpReady && Date.now() - startTime < MAX_WAIT_TIME) {
+    await new Promise(resolve => setTimeout(resolve, CHECK_INTERVAL))
+    if (isCefSharpReady()) {
+      cefSharpReady = true
+      break
+    }
+  }
+  
+  if (!cefSharpReady) {
+    console.warn('CefSharp initialization timeout, proceeding anyway')
+  }
 }
 
 export function isCefSharpReady(): boolean {
-  return cefSharpReady || (
+  if (cefSharpReady) return true
+  
+  const ready = (
     (typeof window.catFoodApi !== 'undefined' && typeof window.catFoodApi.getCatFoods === 'function') ||
     (typeof window.bestPriceApi !== 'undefined' && typeof window.bestPriceApi.getBestPrices === 'function') ||
     (typeof window.settingsApi !== 'undefined' && typeof window.settingsApi.getSettings === 'function') ||
     (typeof window.backgroundServiceApi !== 'undefined' && typeof window.backgroundServiceApi.getStatusAsync === 'function')
   )
+  
+  if (ready) {
+    cefSharpReady = true
+  }
+  
+  return ready
 }
 
 export async function getCatFoods(

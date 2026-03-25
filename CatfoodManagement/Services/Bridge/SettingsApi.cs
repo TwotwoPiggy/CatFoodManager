@@ -68,12 +68,7 @@ namespace CatfoodManagement.Services.Bridge
                     },
                     Database = new
                     {
-                        ConnectionString = _configuration["DatabaseSettings:ConnectionString"] ?? "./data/catfood.db"
-                    },
-                    App = new
-                    {
-                        TessdataPath = _configuration["AppSettings:TessdataPath"] ?? "tessdata",
-                        PlatformFolders = platformFolders
+                        ConnectionString = _configuration.GetConnectionString("Default") ?? "./data/catfood.db"
                     }
                 };
 
@@ -143,11 +138,11 @@ namespace CatfoodManagement.Services.Bridge
                 // 更新数据库设置
                 if (settings.Database != null)
                 {
-                    if (appSettings.DatabaseSettings == null)
+                    if (appSettings.ConnectionStrings == null)
                     {
-                        appSettings.DatabaseSettings = new JObject();
+                        appSettings.ConnectionStrings = new JObject();
                     }
-                    appSettings.DatabaseSettings.ConnectionString = settings.Database.ConnectionString?.ToString() ?? "./data/catfood.db";
+                    appSettings.ConnectionStrings.Default = settings.Database.ConnectionString?.ToString() ?? "./data/catfood.db";
                 }
 
                 // 更新应用程序设置
