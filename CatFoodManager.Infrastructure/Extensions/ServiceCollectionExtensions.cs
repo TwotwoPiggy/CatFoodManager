@@ -48,14 +48,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructureSettings(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<DatabaseSettings>()
-            .Bind(configuration.GetSection(DatabaseSettings.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+            .Bind(configuration.GetSection(DatabaseSettings.SectionName));
 
         services.AddOptions<GeminiSettings>()
-            .Bind(configuration.GetSection(GeminiSettings.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+            .Bind(configuration.GetSection(GeminiSettings.SectionName));
 
         services.AddOptions<AppSettings>()
             .Bind(configuration.GetSection(AppSettings.SectionName));

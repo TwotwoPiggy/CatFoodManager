@@ -4,7 +4,6 @@ using CatFoodManager.Core.Interfaces;
 using CatFoodManager.Core.Models;
 using CatFoodManager.Core.Repositories;
 using CatFoodManager.Core.Services;
-using CatFoodManager.Infrastructure.Configuration;
 using CatFoodManager.Infrastructure.Extensions;
 using CatFoodManager.Infrastructure.Services;
 using CatfoodManagement.Services;
@@ -34,15 +33,41 @@ namespace CatfoodManagement
         [STAThread]
         static void Main()
         {
-            CefSharpSettings.ConcurrentTaskExecution = true;
-            ApplicationConfiguration.Initialize();
-            ConfigureServices();
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (sender, args) => LogUnhandledException(args.Exception, "UIThreadException");
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) => LogUnhandledException(args.ExceptionObject as Exception, "AppDomainUnhandledException");
 
-            StartBackgroundService();
+            try
+            {
+                CefSharpSettings.ConcurrentTaskExecution = true;
+                ApplicationConfiguration.Initialize();
+                ConfigureServices();
 
-            var mainForm = ServiceProvider.GetRequiredService<MainForm>();
-            Application.ApplicationExit += OnApplicationExit;
-            Application.Run(mainForm);
+                StartBackgroundService();
+
+                var mainForm = ServiceProvider.GetRequiredService<MainForm>();
+                Application.ApplicationExit += OnApplicationExit;
+                Application.Run(mainForm);
+            }
+            catch (Exception ex)
+            {
+                LogUnhandledException(ex, "MainException");
+            }
+        }
+
+        private static void LogUnhandledException(Exception? ex, string source)
+        {
+            if (ex == null) return;
+            var logPath = Path.Combine(AppContext.BaseDirectory, "logs");
+            Directory.CreateDirectory(logPath);
+            var logFile = Path.Combine(logPath, $"startup_error_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+            File.WriteAllText(logFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}] 启动/运行失败:\n{ex}\n\nInnerException: {ex.InnerException}\n\nStackTrace:\n{ex.StackTrace}");
+            
+            MessageBox.Show(
+                $"程序发生未处理异常 ({source}):\n{ex.Message}\n\n详细信息已保存到:\n{logFile}",
+                "严重错误",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
 
         private static void ConfigureServices()
@@ -63,8 +88,7 @@ namespace CatfoodManagement
                 builder.SetMinimumLevel(LogLevel.Information);
             });
 
-            var databaseSettings = Configuration.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>();
-            var databasePath = databaseSettings?.ConnectionString ?? "./data/catfood.db";
+            var databasePath = Configuration.GetConnectionString("Default") ?? "./data/catfood.db";
 
             services.AddInfrastructureSettings(Configuration);
             services.AddInfrastructure(databasePath);

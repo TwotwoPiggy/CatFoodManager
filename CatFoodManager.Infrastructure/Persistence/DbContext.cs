@@ -18,6 +18,12 @@ public class DbContext : IDbContext
     /// <param name="databasePath">数据库文件路径 / Database file path</param>
     public DbContext(string databasePath)
     {
+        var directory = Path.GetDirectoryName(databasePath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+        
         _connection = new SQLiteConnection(databasePath);
     }
 
@@ -33,12 +39,12 @@ public class DbContext : IDbContext
     /// </summary>
     /// <typeparam name="T">实体类型 / Entity type</typeparam>
     /// <returns>创建的表数量 / Number of tables created</returns>
-    public Task<int> CreateTableAsync<T>() where T : new()
+    public Task<CreateTableResult> CreateTableAsync<T>() where T : new()
     {
         return Task.Run(() =>
         {
             var result = _connection.CreateTable<T>();
-            return (int)result;
+            return result;
         });
     }
 

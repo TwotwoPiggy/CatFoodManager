@@ -20,7 +20,7 @@ public interface IDbContext : IDisposable
     /// </summary>
     /// <typeparam name="T">实体类型 / Entity type</typeparam>
     /// <returns>创建的表数量 / Number of tables created</returns>
-    Task<int> CreateTableAsync<T>() where T : new();
+    Task<CreateTableResult> CreateTableAsync<T>() where T : new();
 
     /// <summary>
     /// 执行SQL命令。
