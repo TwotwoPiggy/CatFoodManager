@@ -1,5 +1,6 @@
 using CatFoodManager.Application.Services;
 using CatFoodManager.Domain.Entities;
+using CatFoodManager.Domain.Enums;
 using CatFoodManager.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -25,8 +26,8 @@ public class PlatformRegExpServiceTests
     {
         var entities = new List<PlatformRegExp>
         {
-            new() { Id = 1, Name = "Platform1", Platform = "Taobao", RegularExpression = "regex1" },
-            new() { Id = 2, Name = "Platform2", Platform = "JD", RegularExpression = "regex2" }
+            new() { Id = 1, Name = "Platform1", Platform = PlatformType.Taobao, RegularExpression = "regex1" },
+            new() { Id = 2, Name = "Platform2", Platform = PlatformType.JD, RegularExpression = "regex2" }
         };
         _repositoryMock.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(entities);

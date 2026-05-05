@@ -19,7 +19,10 @@ public class GeminiSettingsTests
         Assert.Equal(string.Empty, settings.ApiKey);
         Assert.Equal("gemini-2.0-flash", settings.Model);
         Assert.Equal(3, settings.MaxRetries);
-        Assert.Equal(30, settings.TimeoutSeconds);
+        Assert.Equal(120, settings.TimeoutSeconds);
+        Assert.Equal("https://generativelanguage.googleapis.com/v1beta", settings.BaseUrl);
+        Assert.True(settings.EnableCache);
+        Assert.Equal(60, settings.CacheExpirationMinutes);
     }
 
     [Fact]

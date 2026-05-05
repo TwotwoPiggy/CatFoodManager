@@ -1,4 +1,4 @@
-using CatFoodManager.Core.Models;
+using CatFoodManager.Domain.Entities;
 using Xunit;
 
 namespace CatFoodManager.Tests.Core.Models;
@@ -8,7 +8,7 @@ public class CoreBaseEntityTests
     [Fact]
     public void CreatedAtString_SetWithTicksFormat_ShouldParseCorrectly()
     {
-        var expectedDate = new DateTime(2024, 1, 15, 10, 30, 45);
+        var expectedDate = new DateTime(2024, 1, 15, 10, 30, 45, DateTimeKind.Utc);
         var ticks = expectedDate.Ticks;
 
         var entity = new TestCoreEntity
@@ -16,7 +16,7 @@ public class CoreBaseEntityTests
             CreatedAtString = ticks.ToString()
         };
 
-        Assert.Equal(expectedDate, entity.CreatedAt);
+        Assert.Equal(expectedDate, entity.CreatedAt.UtcDateTime);
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class CoreBaseEntityTests
             CreatedAtString = dateString
         };
 
-        Assert.Equal(expectedDate, entity.CreatedAt);
+        Assert.Equal(expectedDate, entity.CreatedAt.DateTime);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class CoreBaseEntityTests
         var date = new DateTime(2024, 1, 15, 10, 30, 45);
         var entity = new TestCoreEntity
         {
-            CreatedAt = date
+            CreatedAt = new DateTimeOffset(date, TimeSpan.Zero)
         };
 
         var result = entity.CreatedAtString;
@@ -50,7 +50,7 @@ public class CoreBaseEntityTests
     [Fact]
     public void UpdatedAtString_SetWithTicksFormat_ShouldParseCorrectly()
     {
-        var expectedDate = new DateTime(2024, 1, 15, 10, 30, 45);
+        var expectedDate = new DateTime(2024, 1, 15, 10, 30, 45, DateTimeKind.Utc);
         var ticks = expectedDate.Ticks;
 
         var entity = new TestCoreEntity
@@ -58,7 +58,7 @@ public class CoreBaseEntityTests
             UpdatedAtString = ticks.ToString()
         };
 
-        Assert.Equal(expectedDate, entity.UpdatedAt);
+        Assert.Equal(expectedDate, entity.UpdatedAt!.Value.UtcDateTime);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class CoreBaseEntityTests
     [Fact]
     public void PurchasedAtString_SetWithTicksFormat_ShouldParseCorrectly()
     {
-        var expectedDate = new DateTime(2024, 1, 15, 10, 30, 45);
+        var expectedDate = new DateTime(2024, 1, 15, 10, 30, 45, DateTimeKind.Utc);
         var ticks = expectedDate.Ticks;
 
         var entity = new TestCoreEntity
@@ -94,7 +94,7 @@ public class CoreBaseEntityTests
             PurchasedAtString = ticks.ToString()
         };
 
-        Assert.Equal(expectedDate, entity.PurchasedAt);
+        Assert.Equal(expectedDate, entity.PurchasedAt!.Value.UtcDateTime);
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class CoreBaseEntityTests
             CreatedAtString = ticks.ToString()
         };
 
-        var expectedDate = new DateTime(ticks);
+        var expectedDate = new DateTimeOffset(ticks, TimeSpan.Zero);
         Assert.Equal(expectedDate, entity.CreatedAt);
     }
 

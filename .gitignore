@@ -368,3 +368,5 @@ appsettings.*.json
 !appsettings.example.json
 /CatFoodManager/appsettings.json
 /重构方案.md
+/CatfoodManagement/default.db
+/Gemini模块功能梳理.md

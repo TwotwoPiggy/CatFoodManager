@@ -8,8 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace CatFoodManager.Application.Services;
 
 /// <summary>
-/// 任务调度器类，提供任务调度和队列管理功能。
-/// Task scheduler class, providing task scheduling and queue management functionality.
+/// 任务调度器类，提供任务调度和队列管理功能�?/// Task scheduler class, providing task scheduling and queue management functionality.
 /// </summary>
 public class TaskScheduler : ITaskScheduler
 {
@@ -17,8 +16,7 @@ public class TaskScheduler : ITaskScheduler
     private readonly ILogger<TaskScheduler> _logger;
 
     /// <summary>
-    /// 最大队列容量。
-    /// Maximum queue capacity.
+    /// 最大队列容量�?    /// Maximum queue capacity.
     /// </summary>
     private const int MaxQueueCapacity = 10000;
 
@@ -28,11 +26,10 @@ public class TaskScheduler : ITaskScheduler
     private volatile bool _isRunning;
 
     /// <summary>
-    /// 构造函数。
-    /// Constructor.
+    /// 构造函数�?    /// Constructor.
     /// </summary>
-    /// <param name="serviceProvider">服务提供者 / Service provider</param>
-    /// <param name="logger">日志记录器 / Logger</param>
+    /// <param name="serviceProvider">服务提供�?/ Service provider</param>
+    /// <param name="logger">日志记录�?/ Logger</param>
     public TaskScheduler(
         IServiceProvider serviceProvider,
         ILogger<TaskScheduler> logger)
@@ -49,8 +46,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 启动调度器。
-    /// Starts the scheduler.
+    /// 启动调度器�?    /// Starts the scheduler.
     /// </summary>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -71,8 +67,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 停止调度器。
-    /// Stops the scheduler.
+    /// 停止调度器�?    /// Stops the scheduler.
     /// </summary>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -101,8 +96,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 将任务加入队列。
-    /// Enqueues a task.
+    /// 将任务加入队列�?    /// Enqueues a task.
     /// </summary>
     /// <param name="taskId">任务ID / Task ID</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -134,8 +128,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 获取队列长度。
-    /// Gets the queue length.
+    /// 获取队列长度�?    /// Gets the queue length.
     /// </summary>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>队列长度 / Queue length</returns>
@@ -145,8 +138,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 检查调度器是否正在运行。
-    /// Checks if the scheduler is running.
+    /// 检查调度器是否正在运行�?    /// Checks if the scheduler is running.
     /// </summary>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>是否正在运行 / Whether running</returns>
@@ -156,8 +148,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 处理队列中的任务。
-    /// Processes tasks in the queue.
+    /// 处理队列中的任务�?    /// Processes tasks in the queue.
     /// </summary>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     private async Task ProcessQueueAsync(CancellationToken cancellationToken)
@@ -192,8 +183,7 @@ public class TaskScheduler : ITaskScheduler
     }
 
     /// <summary>
-    /// 获取任务配置。
-    /// Gets task configuration.
+    /// 获取任务配置�?    /// Gets task configuration.
     /// </summary>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>任务配置 / Task configuration</returns>

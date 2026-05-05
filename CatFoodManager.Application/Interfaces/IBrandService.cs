@@ -1,4 +1,3 @@
-using CatFoodManager.Application.Common;
 using CatFoodManager.Domain.Entities;
 
 namespace CatFoodManager.Application.Interfaces;
@@ -34,6 +33,15 @@ public interface IBrandService
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>品牌列表 / List of brands</returns>
     Task<IReadOnlyList<Brand>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 搜索品牌。
+    /// Searches brands by keyword.
+    /// </summary>
+    /// <param name="searchKey">搜索关键词 / Search keyword</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>品牌列表 / List of brands</returns>
+    Task<IReadOnlyList<Brand>> SearchAsync(string searchKey, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 添加品牌。

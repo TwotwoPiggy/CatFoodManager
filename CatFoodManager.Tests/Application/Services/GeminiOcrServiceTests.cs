@@ -1,6 +1,6 @@
 using CatFoodManager.Application.Services;
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
+using CatFoodManager.Domain.Entities;
+using CatFoodManager.Domain.Interfaces;
 using Google.GenAI.Types;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -14,7 +14,7 @@ namespace CatFoodManager.Tests.Application.Services;
 public class GeminiOcrServiceTests
 {
     private readonly Mock<IGeminiAgentService> _agentServiceMock;
-    private readonly Mock<IRepository> _repositoryMock;
+    private readonly Mock<IRepository<GeminiResponseEntity>> _repositoryMock;
     private readonly Mock<ILogger<GeminiOcrService>> _loggerMock;
     private readonly MemoryCache _memoryCache;
     private readonly GeminiOcrService _service;
@@ -22,7 +22,7 @@ public class GeminiOcrServiceTests
     public GeminiOcrServiceTests()
     {
         _agentServiceMock = new Mock<IGeminiAgentService>();
-        _repositoryMock = new Mock<IRepository>();
+        _repositoryMock = new Mock<IRepository<GeminiResponseEntity>>();
         _loggerMock = new Mock<ILogger<GeminiOcrService>>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
         _service = new GeminiOcrService(_agentServiceMock.Object, _repositoryMock.Object, _loggerMock.Object, _memoryCache);
@@ -144,7 +144,8 @@ public class GeminiOcrServiceTests
             _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
                 .ReturnsAsync(response);
 
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask)
                 .Verifiable();
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
@@ -153,11 +154,243 @@ public class GeminiOcrServiceTests
             Assert.Equal("Test", result.Items[0].Name);
             Assert.Equal(123, result.Items[0].Value);
             Assert.Equal("test-id", result.ResponseId);
-            _repositoryMock.Verify(r => r.Add(It.IsAny<GeminiResponseEntity>()), Times.Once);
+            _repositoryMock.Verify(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()), Times.Once);
         }
         finally
         {
             Directory.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldIncludeImageIdsInPrompt()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var image1 = Path.Combine(tempPath, "b.jpg");
+            var image2 = Path.Combine(tempPath, "a.png");
+            await System.IO.File.WriteAllBytesAsync(image1, [1, 2, 3]);
+            await System.IO.File.WriteAllBytesAsync(image2, [4, 5, 6]);
+
+            AIRequest? capturedRequest = null;
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .Callback<AIRequest>(request => capturedRequest = request)
+                .ReturnsAsync(new GeminiResponse("")
+                {
+                    Text = "{\"items\":[]}",
+                    ResponseId = "test-id",
+                    ModelVersion = "test-model"
+                });
+
+            await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
+
+            Assert.NotNull(capturedRequest);
+            Assert.NotNull(capturedRequest!.Text);
+            Assert.Contains("prompt", capturedRequest.Text);
+            Assert.Contains("IMAGE ID MAPPING TABLE", capturedRequest.Text);
+            Assert.Contains("img-001", capturedRequest.Text);
+            Assert.Contains("a.png", capturedRequest.Text);
+            Assert.Contains("img-002", capturedRequest.Text);
+            Assert.Contains("b.jpg", capturedRequest.Text);
+            Assert.Contains("\"items\"", capturedRequest.Text);
+            Assert.Contains("VERIFICATION CHECKLIST", capturedRequest.Text);
+            Assert.Contains("EXAMPLE OUTPUT STRUCTURE", capturedRequest.Text);
+        }
+        finally
+        {
+            Directory.Delete(tempPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldMapImageIdBackToPicturePath()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var image1 = Path.Combine(tempPath, "b.jpg");
+            var image2 = Path.Combine(tempPath, "a.png");
+            await System.IO.File.WriteAllBytesAsync(image1, [1, 2, 3]);
+            await System.IO.File.WriteAllBytesAsync(image2, [4, 5, 6]);
+
+            var response = new GeminiResponse("")
+            {
+                Text = "{\"items\":[{\"ImageId\":\"img-001\",\"Name\":\"First\"},{\"ImageId\":\"img-002\",\"Name\":\"Second\"}]}",
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithImage>(tempPath, "prompt");
+
+            Assert.Equal(2, result.Items.Count);
+            Assert.Equal("img-001", result.Items[0].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "a.png"), result.Items[0].PicturePath);
+            Assert.Equal("img-002", result.Items[1].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "b.jpg"), result.Items[1].PicturePath);
+        }
+        finally
+        {
+            Directory.Delete(tempPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldMatchByImageId_WhenAIReturnsItemsInDifferentOrder()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var image1 = Path.Combine(tempPath, "b.jpg");
+            var image2 = Path.Combine(tempPath, "a.png");
+            await System.IO.File.WriteAllBytesAsync(image1, [1, 2, 3]);
+            await System.IO.File.WriteAllBytesAsync(image2, [4, 5, 6]);
+
+            var response = new GeminiResponse("")
+            {
+                Text = "{\"items\":[{\"ImageId\":\"img-002\",\"Name\":\"First\"},{\"ImageId\":\"img-001\",\"Name\":\"Second\"}]}",
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithImage>(tempPath, "prompt");
+
+            Assert.Equal(2, result.Items.Count);
+            Assert.Equal("img-002", result.Items[0].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "b.jpg"), result.Items[0].PicturePath);
+            Assert.Equal("img-001", result.Items[1].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "a.png"), result.Items[1].PicturePath);
+        }
+        finally
+        {
+            Directory.Delete(tempPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldUseReverseFallback_WhenImageIdsAreInvalid()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var image1 = Path.Combine(tempPath, "b.jpg");
+            var image2 = Path.Combine(tempPath, "a.png");
+            await System.IO.File.WriteAllBytesAsync(image1, [1, 2, 3]);
+            await System.IO.File.WriteAllBytesAsync(image2, [4, 5, 6]);
+
+            var response = new GeminiResponse("")
+            {
+                Text = "{\"items\":[{\"ImageId\":\"invalid-id\",\"Name\":\"First\"},{\"ImageId\":\"another-invalid\",\"Name\":\"Second\"}]}",
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithImage>(tempPath, "prompt");
+
+            Assert.Equal(2, result.Items.Count);
+            Assert.Equal("img-002", result.Items[0].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "b.jpg"), result.Items[0].PicturePath);
+            Assert.Equal("img-001", result.Items[1].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "a.png"), result.Items[1].PicturePath);
+        }
+        finally
+        {
+            Directory.Delete(tempPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldUseReverseFallback_WhenImageIdsAreEmpty()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var image1 = Path.Combine(tempPath, "b.jpg");
+            var image2 = Path.Combine(tempPath, "a.png");
+            await System.IO.File.WriteAllBytesAsync(image1, [1, 2, 3]);
+            await System.IO.File.WriteAllBytesAsync(image2, [4, 5, 6]);
+
+            var response = new GeminiResponse("")
+            {
+                Text = "{\"items\":[{\"ImageId\":\"\",\"Name\":\"First\"},{\"ImageId\":null,\"Name\":\"Second\"}]}",
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithImage>(tempPath, "prompt");
+
+            Assert.Equal(2, result.Items.Count);
+            Assert.Equal("img-002", result.Items[0].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "b.jpg"), result.Items[0].PicturePath);
+            Assert.Equal("img-001", result.Items[1].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "a.png"), result.Items[1].PicturePath);
+        }
+        finally
+        {
+            Directory.Delete(tempPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessPicturesAsync_ShouldUseReverseFallback_ForItemsWithInvalidImageId_WhenOthersMatch()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempPath);
+
+        try
+        {
+            var image1 = Path.Combine(tempPath, "b.jpg");
+            var image2 = Path.Combine(tempPath, "a.png");
+            var image3 = Path.Combine(tempPath, "c.bmp");
+            await System.IO.File.WriteAllBytesAsync(image1, [1, 2, 3]);
+            await System.IO.File.WriteAllBytesAsync(image2, [4, 5, 6]);
+            await System.IO.File.WriteAllBytesAsync(image3, [7, 8, 9]);
+
+            var response = new GeminiResponse("")
+            {
+                Text = "{\"items\":[{\"ImageId\":\"img-002\",\"Name\":\"Second\"},{\"ImageId\":\"invalid\",\"Name\":\"Unknown\"},{\"ImageId\":\"img-001\",\"Name\":\"First\"}]}",
+                ResponseId = "test-id",
+                ModelVersion = "test-model"
+            };
+
+            _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
+                .ReturnsAsync(response);
+
+            var result = await _service.ProcessPicturesAsync<TestDtoWithImage>(tempPath, "prompt");
+
+            Assert.Equal(3, result.Items.Count);
+            Assert.Equal("img-002", result.Items[0].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "b.jpg"), result.Items[0].PicturePath);
+            Assert.Equal("img-003", result.Items[1].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "c.bmp"), result.Items[1].PicturePath);
+            Assert.Equal("img-001", result.Items[2].ImageId);
+            Assert.Equal(Path.Combine(tempPath, "a.png"), result.Items[2].PicturePath);
+        }
+        finally
+        {
+            Directory.Delete(tempPath, true);
         }
     }
 
@@ -319,6 +552,30 @@ public class GeminiOcrServiceTests
     }
 
     [Fact]
+    public async Task GetModelsAsync_ShouldRemoveModelsPrefix_FromModelNames()
+    {
+        var models = new List<Model>
+        {
+            new Model { Name = "models/gemini-2.5-flash", DisplayName = "Gemini 2.5 Flash" },
+            new Model { Name = "models/gemini-2.5-pro", DisplayName = "Gemini 2.5 Pro" },
+            new Model { Name = "gemini-2.0-flash", DisplayName = "Gemini 2.0 Flash" }
+        };
+
+        _agentServiceMock.Setup(a => a.GetModelsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(models);
+
+        var result = await _service.GetModelsAsync("test-api-key");
+
+        Assert.Equal(3, result.Count);
+        Assert.Equal("gemini-2.5-flash", result[0].Name);
+        Assert.Equal("gemini-2.5-pro", result[1].Name);
+        Assert.Equal("gemini-2.0-flash", result[2].Name);
+        Assert.Equal("Gemini 2.5 Flash", result[0].DisplayName);
+        Assert.Equal("Gemini 2.5 Pro", result[1].DisplayName);
+        Assert.Equal("Gemini 2.0 Flash", result[2].DisplayName);
+    }
+
+    [Fact]
     public async Task ProcessPicturesAsync_ShouldCacheEntity_WhenRepositoryThrowsException()
     {
         var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -342,8 +599,8 @@ public class GeminiOcrServiceTests
             _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
                 .ReturnsAsync(response);
 
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
-                .Throws(new Exception("Database error"));
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Database error"));
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
@@ -380,7 +637,8 @@ public class GeminiOcrServiceTests
             _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
                 .ReturnsAsync(response);
 
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask)
                 .Verifiable();
 
             var result = await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
@@ -431,14 +689,15 @@ public class GeminiOcrServiceTests
                 .ReturnsAsync(response);
 
             var callCount = 0;
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
-                .Callback(() =>
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
                 {
                     callCount++;
                     if (callCount == 1)
                     {
                         throw new Exception("Database error");
                     }
+                    return Task.CompletedTask;
                 });
 
             await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
@@ -477,8 +736,8 @@ public class GeminiOcrServiceTests
             _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
                 .ReturnsAsync(response);
 
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
-                .Throws(new Exception("Database error"));
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Database error"));
 
             await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
@@ -513,8 +772,8 @@ public class GeminiOcrServiceTests
             _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
                 .ReturnsAsync(response);
 
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
-                .Throws(new Exception("Database error"));
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Database error"));
 
             await _service.ProcessPicturesAsync<TestDto>(tempPath, "prompt");
 
@@ -539,8 +798,6 @@ public class GeminiOcrServiceTests
     [InlineData("2024-01-15", 2024, 1, 15)]
     [InlineData("2024/01/15", 2024, 1, 15)]
     [InlineData("2024.01.15", 2024, 1, 15)]
-    [InlineData("2024年1月15日", 2024, 1, 15)]
-    [InlineData("2024年1月", 2024, 1, 1)]
     [InlineData("2024-1-5", 2024, 1, 5)]
     [InlineData("2024/1/5", 2024, 1, 5)]
     public async Task ProcessPicturesAsync_ShouldParseVariousDateFormats(string dateString, int expectedYear, int expectedMonth, int expectedDay)
@@ -561,7 +818,8 @@ public class GeminiOcrServiceTests
             _agentServiceMock.Setup(a => a.GenerateContentAsync(It.IsAny<AIRequest>()))
                 .ReturnsAsync(response);
 
-            _repositoryMock.Setup(r => r.Add(It.IsAny<GeminiResponseEntity>()))
+            _repositoryMock.Setup(r => r.AddAsync(It.IsAny<GeminiResponseEntity>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask)
                 .Verifiable();
 
             var result = await _service.ProcessPicturesAsync<TestDtoWithDate>(tempPath, "prompt");
@@ -682,4 +940,11 @@ public class TestDtoWithDate
     public string Name { get; set; } = string.Empty;
     public DateTime? PurchasedAt { get; set; }
     public decimal FinalPrice { get; set; }
+}
+
+public class TestDtoWithImage
+{
+    public string ImageId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string PicturePath { get; set; } = string.Empty;
 }

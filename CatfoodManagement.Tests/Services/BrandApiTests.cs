@@ -1,6 +1,6 @@
 using CatfoodManagement.Services.Bridge;
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
@@ -10,13 +10,13 @@ namespace CatfoodManagement.Tests.Services
     public class BrandApiTests
     {
         private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly Mock<IService<Brand>> _mockBrandService;
+        private readonly Mock<IBrandService> _mockBrandService;
         private readonly BrandApi _brandApi;
 
         public BrandApiTests()
         {
             _mockServiceProvider = new Mock<IServiceProvider>();
-            _mockBrandService = new Mock<IService<Brand>>();
+            _mockBrandService = new Mock<IBrandService>();
             
             var mockScope = new Mock<IServiceScope>();
             var mockScopeFactory = new Mock<IServiceScopeFactory>();
@@ -24,7 +24,7 @@ namespace CatfoodManagement.Tests.Services
             mockScope.Setup(x => x.ServiceProvider).Returns(_mockServiceProvider.Object);
             mockScopeFactory.Setup(x => x.CreateScope()).Returns(mockScope.Object);
             _mockServiceProvider.Setup(x => x.GetService(typeof(IServiceScopeFactory))).Returns(mockScopeFactory.Object);
-            _mockServiceProvider.Setup(x => x.GetService(typeof(IService<Brand>))).Returns(_mockBrandService.Object);
+            _mockServiceProvider.Setup(x => x.GetService(typeof(IBrandService))).Returns(_mockBrandService.Object);
 
             _brandApi = new BrandApi(_mockServiceProvider.Object);
         }
@@ -39,8 +39,8 @@ namespace CatfoodManagement.Tests.Services
             };
 
             _mockBrandService
-                .Setup(x => x.GetAllWithCount())
-                .Returns((brands, 2));
+                .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(brands);
 
             var result = await _brandApi.GetBrands();
             var deserializedResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);
@@ -55,8 +55,9 @@ namespace CatfoodManagement.Tests.Services
             var brand = new Brand { Id = 1, Name = "New Brand" };
 
             _mockBrandService
-                .Setup(x => x.Save(It.IsAny<Brand>()))
-                .Callback<Brand>(b => b.Id = 1);
+                .Setup(x => x.AddAsync(It.IsAny<Brand>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask)
+                .Callback<Brand, CancellationToken>((b, _) => b.Id = 1);
 
             var result = await _brandApi.AddBrand("New Brand");
             var deserializedResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);
@@ -71,8 +72,8 @@ namespace CatfoodManagement.Tests.Services
             var brand = new Brand { Id = 1, Name = "Old Name" };
 
             _mockBrandService
-                .Setup(x => x.Query(1))
-                .Returns(brand);
+                .Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(brand);
 
             var result = await _brandApi.UpdateBrand(1, "New Name");
             var deserializedResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);

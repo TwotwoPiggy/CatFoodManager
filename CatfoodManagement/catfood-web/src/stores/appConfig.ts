@@ -8,12 +8,14 @@ const CACHE_DURATION = 5 * 60 * 1000
 interface AppConfigCache {
   platformFolders: Record<string, string>
   ocrPrompts: OcrPrompt[]
+  imageSaveRootPath: string
   timestamp: number
 }
 
 export const useAppConfigStore = defineStore('appConfig', () => {
   const platformFolders = ref<Record<string, string>>({})
   const ocrPrompts = ref<OcrPrompt[]>([])
+  const imageSaveRootPath = ref<string>('')
   const loading = ref(false)
   const lastFetchTime = ref(0)
 
@@ -32,6 +34,17 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     return defaultPrompt.value?.Content || ''
   })
 
+  const todayDefaultPath = computed(() => {
+    if (!imageSaveRootPath.value) return ''
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const dateStr = `${year}${month}${day}`
+    const basePath = imageSaveRootPath.value.replace(/[\\/]+$/, '')
+    return `${basePath}\\${dateStr}\\`
+  })
+
   function loadFromCache(): boolean {
     try {
       const cacheStr = localStorage.getItem(CACHE_KEY)
@@ -42,6 +55,7 @@ export const useAppConfigStore = defineStore('appConfig', () => {
 
       platformFolders.value = cache.platformFolders
       ocrPrompts.value = cache.ocrPrompts
+      imageSaveRootPath.value = cache.imageSaveRootPath || ''
       lastFetchTime.value = cache.timestamp
       return true
     } catch {
@@ -54,6 +68,7 @@ export const useAppConfigStore = defineStore('appConfig', () => {
       const cache: AppConfigCache = {
         platformFolders: platformFolders.value,
         ocrPrompts: ocrPrompts.value,
+        imageSaveRootPath: imageSaveRootPath.value,
         timestamp: Date.now()
       }
       localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
@@ -70,8 +85,9 @@ export const useAppConfigStore = defineStore('appConfig', () => {
 
     try {
       const result = await getSettings()
-      if (result.Success && result.Data?.App?.PlatformFolders) {
-        platformFolders.value = result.Data.App.PlatformFolders
+      if (result.Success && result.Data?.App) {
+        platformFolders.value = result.Data.App.PlatformFolders || {}
+        imageSaveRootPath.value = result.Data.App.ImageSaveRootPath || ''
       }
     } catch (error) {
       console.error('Failed to fetch platform folders:', error)
@@ -114,17 +130,20 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     localStorage.removeItem(CACHE_KEY)
     platformFolders.value = {}
     ocrPrompts.value = []
+    imageSaveRootPath.value = ''
     lastFetchTime.value = 0
   }
 
   return {
     platformFolders,
     ocrPrompts,
+    imageSaveRootPath,
     loading,
     lastFetchTime,
     folderOptions,
     defaultPrompt,
     defaultPromptContent,
+    todayDefaultPath,
     fetchPlatformFolders,
     fetchOcrPrompts,
     fetchAll,

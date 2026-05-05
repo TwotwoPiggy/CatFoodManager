@@ -1,4 +1,5 @@
 using CatFoodManager.Domain.Entities;
+using CatFoodManager.Domain.Enums;
 using Xunit;
 
 namespace CatFoodManager.Tests.Domain.Entities;
@@ -12,7 +13,7 @@ public class PlatformRegExpTests
 
         Assert.Equal(0, platformRegExp.Id);
         Assert.Equal(string.Empty, platformRegExp.Name);
-        Assert.Equal(string.Empty, platformRegExp.Platform);
+        Assert.Equal(PlatformType.None, platformRegExp.Platform);
         Assert.Equal(string.Empty, platformRegExp.RegularExpression);
         Assert.Equal(string.Empty, platformRegExp.FieldInfos);
     }
@@ -24,14 +25,14 @@ public class PlatformRegExpTests
         {
             Id = 1,
             Name = "Taobao",
-            Platform = "Taobao",
+            Platform = PlatformType.Taobao,
             RegularExpression = @"\d+",
             FieldInfos = "{\"price\":1,\"name\":2}"
         };
 
         Assert.Equal(1, platformRegExp.Id);
         Assert.Equal("Taobao", platformRegExp.Name);
-        Assert.Equal("Taobao", platformRegExp.Platform);
+        Assert.Equal(PlatformType.Taobao, platformRegExp.Platform);
         Assert.Equal(@"\d+", platformRegExp.RegularExpression);
         Assert.Equal("{\"price\":1,\"name\":2}", platformRegExp.FieldInfos);
     }

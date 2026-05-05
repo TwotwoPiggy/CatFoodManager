@@ -3,7 +3,7 @@ using SQLite;
 namespace CatFoodManager.Infrastructure.Persistence;
 
 /// <summary>
-/// 数据库上下文实现类，提供SQLite数据库操作。
+/// 数据库上下文实现类，提供SQLite数据库操作�?
 /// Database context implementation class, providing SQLite database operations.
 /// </summary>
 public class DbContext : IDbContext
@@ -12,29 +12,39 @@ public class DbContext : IDbContext
     private bool _disposed;
 
     /// <summary>
-    /// 构造函数。
+    /// 构造函数�?
     /// Constructor.
     /// </summary>
-    /// <param name="databasePath">数据库文件路径 / Database file path</param>
+    /// <param name="databasePath">数据库文件路�?/ Database file path</param>
     public DbContext(string databasePath)
     {
-        var directory = Path.GetDirectoryName(databasePath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        try
         {
-            Directory.CreateDirectory(directory);
+            var directory = Path.GetDirectoryName(databasePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
+            _connection = new SQLiteConnection(databasePath);
         }
-        
-        _connection = new SQLiteConnection(databasePath);
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to initialize database at path: {databasePath}. " +
+                $"Current directory: {Directory.GetCurrentDirectory()}. " +
+                $"Base directory: {AppContext.BaseDirectory}", ex);
+        }
     }
 
     /// <summary>
-    /// 获取SQLite数据库连接。
+    /// 获取SQLite数据库连接�?
     /// Gets the SQLite database connection.
     /// </summary>
     public SQLiteConnection Connection => _connection;
 
     /// <summary>
-    /// 创建数据表。
+    /// 创建数据表�?
     /// Creates a database table.
     /// </summary>
     /// <typeparam name="T">实体类型 / Entity type</typeparam>
@@ -49,7 +59,7 @@ public class DbContext : IDbContext
     }
 
     /// <summary>
-    /// 执行SQL命令。
+    /// 执行SQL命令�?
     /// Executes a SQL command.
     /// </summary>
     /// <param name="sql">SQL语句 / SQL statement</param>
@@ -61,7 +71,7 @@ public class DbContext : IDbContext
     }
 
     /// <summary>
-    /// 查询数据。
+    /// 查询数据�?
     /// Queries data.
     /// </summary>
     /// <typeparam name="T">实体类型 / Entity type</typeparam>
@@ -74,7 +84,7 @@ public class DbContext : IDbContext
     }
 
     /// <summary>
-    /// 释放资源。
+    /// 释放资源�?
     /// Disposes resources.
     /// </summary>
     public void Dispose()

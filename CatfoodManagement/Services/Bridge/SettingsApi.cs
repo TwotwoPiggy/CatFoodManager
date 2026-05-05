@@ -6,8 +6,8 @@ using System.IO;
 namespace CatfoodManagement.Services.Bridge
 {
     /// <summary>
-    /// 设置管理 API，提供应用程序配置的读取和保存功能
-    /// 通过 CefSharp 暴露给前端 JavaScript 调用
+    /// 设置管理 API，提供应用程序配置的读取和保存功�?
+    /// 通过 CefSharp 暴露给前�?JavaScript 调用
     /// </summary>
     public class SettingsApi
     {
@@ -22,7 +22,7 @@ namespace CatfoodManagement.Services.Bridge
         private readonly string _settingsFilePath;
 
         /// <summary>
-        /// 构造函数
+        /// 构造函�?
         /// </summary>
         /// <param name="configuration">应用程序配置</param>
         public SettingsApi(IConfiguration configuration)
@@ -34,12 +34,12 @@ namespace CatfoodManagement.Services.Bridge
         /// <summary>
         /// 获取应用程序设置
         /// </summary>
-        /// <returns>JSON 格式的设置数据</returns>
+        /// <returns>JSON 格式的设置数�?/returns>
         public string GetSettings()
         {
             try
             {
-                // 读取平台文件夹配置
+                // 读取平台文件夹配�?
                 var platformFolders = new Dictionary<string, string>();
                 var foldersSection = _configuration.GetSection("AppSettings:PlatformFolders");
                 if (foldersSection.Exists())
@@ -69,6 +69,11 @@ namespace CatfoodManagement.Services.Bridge
                     Database = new
                     {
                         ConnectionString = _configuration.GetConnectionString("Default") ?? "./data/catfood.db"
+                    },
+                    App = new
+                    {
+                        PlatformFolders = platformFolders,
+                        ImageSaveRootPath = _configuration["AppSettings:ImageSaveRootPath"] ?? ""
                     }
                 };
 
@@ -83,8 +88,8 @@ namespace CatfoodManagement.Services.Bridge
         /// <summary>
         /// 保存应用程序设置
         /// </summary>
-        /// <param name="settingsJson">JSON 格式的设置数据</param>
-        /// <returns>JSON 格式的操作结果</returns>
+        /// <param name="settingsJson">JSON 格式的设置数�?/param>
+        /// <returns>JSON 格式的操作结�?/returns>
         public string SaveSettings(string settingsJson)
         {
             try
@@ -118,7 +123,7 @@ namespace CatfoodManagement.Services.Bridge
                     }
 
                     appSettings.AppSettings.AI.ApiKey = settings.AI.ApiKey?.ToString() ?? "";
-                    appSettings.AppSettings.AI.ModelName = settings.AI.ModelName?.ToString() ?? "gemini-2.5-flash";
+                    appSettings.AppSettings.AI.ModelName = RemoveModelsPrefix(settings.AI.ModelName?.ToString() ?? "gemini-2.5-flash");
                     appSettings.AppSettings.AI.RPM = settings.AI.RPM?.ToString() ?? "5";
                     appSettings.AppSettings.AI.TPM = settings.AI.TPM?.ToString() ?? "250000";
                     appSettings.AppSettings.AI.RPD = settings.AI.RPD?.ToString() ?? "20";
@@ -135,7 +140,7 @@ namespace CatfoodManagement.Services.Bridge
                     }
                 }
 
-                // 更新数据库设置
+                // 更新数据库设�?
                 if (settings.Database != null)
                 {
                     if (appSettings.ConnectionStrings == null)
@@ -153,8 +158,9 @@ namespace CatfoodManagement.Services.Bridge
                         appSettings.AppSettings = new JObject();
                     }
                     appSettings.AppSettings.TessdataPath = settings.App.TessdataPath?.ToString() ?? "tessdata";
+                    appSettings.AppSettings.ImageSaveRootPath = settings.App.ImageSaveRootPath?.ToString() ?? "";
 
-                    // 更新平台文件夹设置
+                    // 更新平台文件夹设�?
                     var platformFolders = settings.App.PlatformFolders;
                     if (platformFolders != null)
                     {
@@ -182,6 +188,21 @@ namespace CatfoodManagement.Services.Bridge
             {
                 return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// 移除模型名称的 "models/" 前缀
+        /// </summary>
+        /// <param name="modelName">模型名称</param>
+        /// <returns>处理后的模型名称</returns>
+        private static string RemoveModelsPrefix(string modelName)
+        {
+            const string modelsPrefix = "models/";
+            if (modelName.StartsWith(modelsPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return modelName.Substring(modelsPrefix.Length);
+            }
+            return modelName;
         }
     }
 }

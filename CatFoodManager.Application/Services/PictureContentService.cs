@@ -1,17 +1,17 @@
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
-using CatFoodManager.Core.Statics;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Entities;
+using CatFoodManager.Domain.Enums;
 using CommonTools;
 using OcrApi;
 using System.Text.RegularExpressions;
 
-namespace CatFoodManager.Core.Services
+namespace CatFoodManager.Application.Services
 {
     /// <summary>
     /// 图片内容服务类，提供图片OCR识别和内容提取功能。
     /// Picture content service class, providing image OCR recognition and content extraction functionality.
     /// </summary>
-    public class PictureContentService : ServiceBase
+    public class PictureContentService
     {
         private readonly OCRHelper _ocrHelper;
         private readonly IPlatformRegExpService _regExpService;
@@ -20,10 +20,9 @@ namespace CatFoodManager.Core.Services
         /// 构造函数。
         /// Constructor.
         /// </summary>
-        /// <param name="repo">仓储实例 / Repository instance</param>
         /// <param name="ocrHelper">OCR帮助类实例 / OCR helper instance</param>
         /// <param name="regExpService">正则表达式服务实例 / Regular expression service instance</param>
-        public PictureContentService(IRepository repo, OCRHelper ocrHelper, IPlatformRegExpService regExpService) : base(repo)
+        public PictureContentService(OCRHelper ocrHelper, IPlatformRegExpService regExpService)
         {
             _ocrHelper = ocrHelper;
             _regExpService = regExpService;
@@ -117,7 +116,7 @@ namespace CatFoodManager.Core.Services
             var regex = new Regex(regPattern, RegexOptions.IgnoreCase);
             var groups = regex.Match(content).Groups;
             catFood.OrderId = groups[fieldInfos["orderId"]].Value;
-            catFood.Name = groups[fieldInfos["name"]].Value.Replace("猎粑", "猫粮").Replace("内", "肉");
+            catFood.Name = groups[fieldInfos["name"]].Value.Replace("猎粑", "猫粮").Replace("店", "");
             catFood.FoodType = catFood.Name.Contains("猫粮") || catFood.Name.Contains("主食") ? ProductType.CatFood : ProductType.CatSnack;
             catFood.Count = Int32.TryParse(groups[fieldInfos["count"]].Value, out int count) ? count : 1;
             catFood.Price = Double.TryParse(groups[fieldInfos["price"]].Value, out double price) ? price : 1D;

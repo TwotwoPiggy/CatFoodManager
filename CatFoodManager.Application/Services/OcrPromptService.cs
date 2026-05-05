@@ -15,7 +15,7 @@ namespace CatFoodManager.Application.Services
         /// 默认提示词内容。
         /// Default prompt content.
         /// </summary>
-        private const string DefaultPromptContent = "提取图片购物信息返回JSON: {\"Name\": \"包含品牌名称+产品名称+规格\", \"PurchasedAt\": \"yyyy-MM-dd HH:mm:ss\", \"FinalPrice\": 0.00}\nName要求: 1. 格式: 品牌+产品名称+规格(分量g/kg*数量),过滤:去除\"全价,猫,高蛋白,鲜肉\"等通用词,保留\"蓝莓兔,脆脆乐\"等独特标识。\nFinalPrice要求: 精确到小数点后两位。";
+        private const string DefaultPromptContent = "提取图片购物信息返回JSON: {\"Name\": \"包含品牌名称+产品名称+规格\", \"PurchasedAt\": \"yyyy-MM-dd HH:mm:ss\", \"FinalPrice\": 0.00}\nName要求: 1. 格式: 品牌+产品名称+规格(分量g/kg*数量),过滤:去除\"全价, 高蛋白 鲜肉\"等通用词 保留\"蓝莓 脆脆乐\"等独特标识。\nFinalPrice要求: 精确到小数点后两位。";
 
         /// <summary>
         /// 默认提示词名称。

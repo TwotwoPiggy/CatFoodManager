@@ -13,7 +13,7 @@ public class BestPriceTests
 
         Assert.Equal(0, bestPrice.Id);
         Assert.Null(bestPrice.Name);
-        Assert.Equal(default, bestPrice.CreatedAt);
+        Assert.NotEqual(default, bestPrice.CreatedAt);
         Assert.Null(bestPrice.UpdatedAt);
         Assert.Null(bestPrice.PurchasedAt);
         Assert.Equal(ProductType.CatFood, bestPrice.Type);
@@ -24,6 +24,7 @@ public class BestPriceTests
         Assert.Null(bestPrice.PicturePath);
         Assert.Null(bestPrice.FactoryName);
         Assert.False(bestPrice.HasTestReport);
+        Assert.Null(bestPrice.TestingAgency);
         Assert.False(bestPrice.IsWorthRepurchasing);
     }
 
@@ -46,6 +47,7 @@ public class BestPriceTests
             PicturePath = "/path/to/picture.jpg",
             FactoryName = "Test Factory",
             HasTestReport = true,
+            TestingAgency = "Test Testing Agency",
             IsWorthRepurchasing = true
         };
 
@@ -62,6 +64,7 @@ public class BestPriceTests
         Assert.Equal("/path/to/picture.jpg", bestPrice.PicturePath);
         Assert.Equal("Test Factory", bestPrice.FactoryName);
         Assert.True(bestPrice.HasTestReport);
+        Assert.Equal("Test Testing Agency", bestPrice.TestingAgency);
         Assert.True(bestPrice.IsWorthRepurchasing);
     }
 }

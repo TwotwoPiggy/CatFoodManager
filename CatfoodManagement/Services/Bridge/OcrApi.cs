@@ -1,4 +1,5 @@
 using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
@@ -99,7 +100,6 @@ namespace CatfoodManagement.Services.Bridge
 
             try
             {
-                // 验证文件夹路径
                 if (string.IsNullOrEmpty(folderPath))
                 {
                     return JsonConvert.SerializeObject(new { Success = false, Message = "Folder path is required" });
@@ -110,12 +110,11 @@ namespace CatfoodManagement.Services.Bridge
                     return JsonConvert.SerializeObject(new { Success = false, Message = "Folder not found" });
                 }
 
-                // 调用 OCR 服务处理图片
                 var results = await ocrService.ProcessPicturesAsync<CatFoodManager.Core.Models.Dtos.CatFoodDto>(folderPath, promptText);
                 foreach (var item in results.Items)
                 {
-                    item.Platform = (CatFoodManager.Core.Statics.PlatformType)platform;
-                } // 设置平台信息
+                    item.Platform = (PlatformType)platform;
+                }
                 return JsonConvert.SerializeObject(new { Success = true, Count = results.Items.Count, Data = results.Items, ResponseId = results.ResponseId });
             }
             catch (Exception ex)
@@ -133,13 +132,12 @@ namespace CatfoodManagement.Services.Bridge
             return await Task.Run(() =>
             {
                 string? result = null;
-                // 在 STA 线程中显示文件夹选择对话框
                 var thread = new Thread(() =>
                 {
                     using var dialog = new FolderBrowserDialog
                     {
-                        Description = "选择图片文件夹",
-                        ShowNewFolderButton = false
+                        Description = "选择文件夹",
+                        ShowNewFolderButton = true
                     };
 
                     if (dialog.ShowDialog() == DialogResult.OK)
@@ -151,6 +149,73 @@ namespace CatfoodManagement.Services.Bridge
                 thread.Start();
                 thread.Join();
                 return result ?? string.Empty;
+            });
+        }
+
+        /// <summary>
+        /// 打开文件选择对话框
+        /// </summary>
+        /// <returns>选中的文件路径，如果取消则返回空字符串</returns>
+        public async Task<string> SelectFileAsync()
+        {
+            return await Task.Run(() =>
+            {
+                string? result = null;
+                var thread = new Thread(() =>
+                {
+                    using var dialog = new OpenFileDialog
+                    {
+                        Title = "选择图片",
+                        Filter = "图片文件|*.jpg;*.jpeg;*.png;*.gif;*.bmp|所有文件|*.*",
+                        Multiselect = false
+                    };
+
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        result = dialog.FileName;
+                    }
+                });
+                thread.SetApartmentState(ApartmentState.STA);
+                thread.Start();
+                thread.Join();
+                return result ?? string.Empty;
+            });
+        }
+
+        /// <summary>
+        /// 打开文件夹
+        /// </summary>
+        /// <param name="folderPath">要打开的文件夹路径</param>
+        /// <returns>JSON 格式的操作结果</returns>
+        public async Task<string> OpenFolderAsync(string folderPath)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(folderPath))
+                    {
+                        return JsonConvert.SerializeObject(new { Success = false, Message = "文件夹路径不能为空" });
+                    }
+
+                    if (!Directory.Exists(folderPath))
+                    {
+                        Directory.CreateDirectory(folderPath);
+                    }
+
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = folderPath,
+                        UseShellExecute = true,
+                        Verb = "open"
+                    });
+
+                    return JsonConvert.SerializeObject(new { Success = true });
+                }
+                catch (Exception ex)
+                {
+                    return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message });
+                }
             });
         }
     }

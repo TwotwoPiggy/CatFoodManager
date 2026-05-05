@@ -9,7 +9,7 @@ declare global {
       getCatFoods: (page: number, pageSize: number, searchKey?: string) => Promise<string>
       updateCatFood: (id: number, field: string, value: any) => Promise<string>
       deleteCatFood: (id: number) => Promise<string>
-      viewImage: (picturePath: string) => void
+      viewImageAsync: (picturePath: string) => Promise<string>
       uploadImage: (id: number, imagePath: string) => Promise<string>
     }
     brandApi: {
@@ -23,13 +23,17 @@ declare global {
       addBestPrice: (dto: any) => Promise<string>
       updateBestPrice: (id: number, field: string, value: any) => Promise<string>
       deleteBestPrice: (id: number) => Promise<string>
+      deleteBestPrices: (ids: number[]) => Promise<string>
+      uploadImageAsync: (id: number, imagePath: string, targetPath: string) => Promise<string>
     }
     ocrApi: {
       validateModelAsync: () => Promise<string>
       syncFromPicturesAsync: (folderPath: string, promptText: string) => Promise<string>
       selectFolderAsync: () => Promise<string>
+      selectFileAsync: () => Promise<string>
       getModelsAsync: (apiKey?: string) => Promise<string>
       clearModelsCache: (apiKey?: string) => string
+      openFolderAsync: (folderPath: string) => Promise<string>
     }
     ocrPromptApi: {
       getDefaultAsync: () => Promise<string>
@@ -156,9 +160,16 @@ export async function updateCatFood(
   return JSON.parse(result)
 }
 
-export function viewImage(picturePath: string): void {
-  if (isCefSharpReady()) {
-    window.catFoodApi.viewImage(picturePath)
+export async function viewImage(picturePath: string): Promise<{ Success: boolean; Message?: string }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.catFoodApi.viewImageAsync(picturePath)
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('ViewImage error:', error)
+    return { Success: false, Message: 'Failed to view image' }
   }
 }
 
@@ -231,6 +242,14 @@ export async function deleteBestPrice(id: number): Promise<ApiResponse> {
     return { Success: false, Message: 'CefSharp not ready' }
   }
   const result = await window.bestPriceApi.deleteBestPrice(id)
+  return JSON.parse(result)
+}
+
+export async function deleteBestPrices(ids: number[]): Promise<ApiResponse & { Count?: number }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  const result = await window.bestPriceApi.deleteBestPrices(ids)
   return JSON.parse(result)
 }
 
@@ -369,6 +388,13 @@ export async function selectFolder(): Promise<string> {
   return await window.ocrApi.selectFolderAsync()
 }
 
+export async function selectFile(): Promise<string> {
+  if (!isCefSharpReady()) {
+    return ''
+  }
+  return await window.ocrApi.selectFileAsync()
+}
+
 export interface AppSettings {
   AI: {
     ApiKey: string
@@ -386,6 +412,7 @@ export interface AppSettings {
   }
   App: {
     PlatformFolders: Record<string, string>
+    ImageSaveRootPath?: string
   }
 }
 
@@ -754,5 +781,35 @@ export async function restartBackgroundService(): Promise<{ Success: boolean; Me
   } catch (error) {
     console.error('RestartBackgroundService error:', error)
     return { Success: false, Message: 'Failed to restart background service' }
+  }
+}
+
+export async function uploadBestPriceImage(
+  id: number,
+  imagePath: string,
+  targetPath: string
+): Promise<{ Success: boolean; Message?: string; Data?: { PicturePath: string } }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.bestPriceApi.uploadImageAsync(id, imagePath, targetPath)
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('UploadBestPriceImage error:', error)
+    return { Success: false, Message: 'Failed to upload image' }
+  }
+}
+
+export async function openFolder(folderPath: string): Promise<{ Success: boolean; Message?: string }> {
+  if (!isCefSharpReady()) {
+    return { Success: false, Message: 'CefSharp not ready' }
+  }
+  try {
+    const result = await window.ocrApi.openFolderAsync(folderPath)
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('OpenFolder error:', error)
+    return { Success: false, Message: 'Failed to open folder' }
   }
 }

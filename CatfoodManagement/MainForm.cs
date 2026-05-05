@@ -1,8 +1,6 @@
 using CefSharp;
 using CefSharp.WinForms;
 using CatfoodManagement.Services;
-using CatFoodManager.Application.Interfaces;
-using CatFoodManager.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CatfoodManagement
@@ -57,33 +55,6 @@ namespace CatfoodManagement
                 _javaScriptBridge.RegisterApis(_browser);
                 
                 _browser.RenderProcessMessageHandler = new BridgeInitRenderProcessHandler(_browser, _javaScriptBridge);
-
-                _browser.FrameLoadEnd += async (s, e) =>
-                {
-                    if (e.Frame.IsMain)
-                    {
-                        try
-                        {
-                            using var scope = _serviceProvider.CreateScope();
-                            var databaseInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
-                            var ocrPromptService = scope.ServiceProvider.GetRequiredService<IOcrPromptService>();
-                            
-                            await databaseInitializer.InitializeAsync();
-                            await ocrPromptService.InitializeDefaultPromptAsync();
-                        }
-                        catch (Exception initEx)
-                        {
-                            _browser.BeginInvoke(new Action(() =>
-                            {
-                                MessageBox.Show(
-                                    $"后台服务初始化失败: {initEx.Message}\n请检查配置或数据库路径。",
-                                    "初始化失败",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
-                            }));
-                        }
-                    }
-                };
 
 #if DEBUG
                 _browser.MenuHandler = new DevToolsContextMenuHandler(_browser);

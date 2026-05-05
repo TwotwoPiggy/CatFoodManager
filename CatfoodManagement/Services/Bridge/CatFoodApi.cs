@@ -1,5 +1,5 @@
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
@@ -44,31 +44,17 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> GetCatFoods(int page, int pageSize, string? searchKey = null)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<CatFood>>();
+            var service = scope.ServiceProvider.GetRequiredService<ICatFoodService>();
 
-            IEnumerable<CatFood> results;
-            int count;
-            
-            // 根据是否有搜索关键词选择查询方式
-            if (string.IsNullOrEmpty(searchKey))
-            {
-                (results, count) = service.GetAllWithCount();
-            }
-            else
-            {
-                (results, count) = service.FuzzyQueryWithCount(BuildSearchQuery(searchKey), BuildSearchArgs(searchKey));
-            }
+            var pagedResult = await service.GetPagedAsync(page, pageSize);
 
-            // 分页处理
-            var pagedResults = results.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-
-            return await Task.FromResult(JsonConvert.SerializeObject(new
+            return JsonConvert.SerializeObject(new
             {
-                Data = pagedResults,
-                Total = count,
+                Data = pagedResult.Items,
+                Total = pagedResult.TotalCount,
                 Page = page,
                 PageSize = pageSize
-            }, _jsonSettings));
+            }, _jsonSettings);
         }
 
         /// <summary>
@@ -81,25 +67,24 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> UpdateCatFood(long id, string field, object value)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<CatFood>>();
+            var service = scope.ServiceProvider.GetRequiredService<ICatFoodService>();
 
-            var entity = service.Query(id);
+            var entity = await service.GetByIdAsync(id);
             if (entity == null)
             {
                 return JsonConvert.SerializeObject(new { Success = false, Message = "Entity not found" }, _jsonSettings);
             }
 
-            // 通过反射更新指定字段
             var propertyToUpdate = entity.GetType().GetProperty(field);
             if (propertyToUpdate != null)
             {
                 var convertedValue = ConvertValue(value, propertyToUpdate.PropertyType);
                 propertyToUpdate.SetValue(entity, convertedValue);
                 entity.UpdatedAt = DateTime.Now;
-                service.Update(entity);
+                await service.UpdateAsync(entity);
             }
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
 
         /// <summary>
@@ -110,25 +95,39 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> DeleteCatFood(long id)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<CatFood>>();
-            service.Delete((int)id);
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
+            var service = scope.ServiceProvider.GetRequiredService<ICatFoodService>();
+            await service.DeleteAsync(id);
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
 
         /// <summary>
         /// 查看图片（使用系统默认图片查看器）
         /// </summary>
         /// <param name="picturePath">图片路径</param>
-        public void ViewImage(string picturePath)
+        /// <returns>JSON 格式的操作结果</returns>
+        public async Task<string> ViewImageAsync(string picturePath)
         {
-            if (File.Exists(picturePath))
+            return await Task.Run(() =>
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                if (!File.Exists(picturePath))
                 {
-                    FileName = picturePath,
-                    UseShellExecute = true
-                });
-            }
+                    return JsonConvert.SerializeObject(new { Success = false, Message = "图片文件不存在" }, _jsonSettings);
+                }
+
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = picturePath,
+                        UseShellExecute = true
+                    });
+                    return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
+                }
+                catch (Exception ex)
+                {
+                    return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message }, _jsonSettings);
+                }
+            });
         }
 
         /// <summary>
@@ -140,38 +139,17 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> UploadImage(long id, string imagePath)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<CatFood>>();
+            var service = scope.ServiceProvider.GetRequiredService<ICatFoodService>();
 
-            var entity = service.Query(id);
+            var entity = await service.GetByIdAsync(id);
             if (entity != null)
             {
                 entity.PicturePath = imagePath;
                 entity.UpdatedAt = DateTime.Now;
-                service.Update(entity);
+                await service.UpdateAsync(entity);
             }
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
-        }
-
-        /// <summary>
-        /// 构建搜索 SQL 查询语句
-        /// </summary>
-        /// <param name="searchKey">搜索关键词</param>
-        /// <returns>SQL 查询语句</returns>
-        private string BuildSearchQuery(string searchKey)
-        {
-            var baseQuery = "SELECT DISTINCT a.*\r\nFROM CatFood a \r\nLEFT JOIN Brand b ON a.BrandId = b.Id \r\nWHERE b.Name like";
-            return $"{baseQuery} ?";
-        }
-
-        /// <summary>
-        /// 构建搜索参数
-        /// </summary>
-        /// <param name="searchKey">搜索关键词</param>
-        /// <returns>参数数组</returns>
-        private object[] BuildSearchArgs(string searchKey)
-        {
-            return new object[] { $"%{searchKey}%" };
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
 
         /// <summary>
@@ -182,19 +160,26 @@ namespace CatfoodManagement.Services.Bridge
         /// <returns>转换后的值</returns>
         private static object ConvertValue(object value, Type targetType)
         {
-            // 处理枚举类型
-            if (targetType.IsEnum)
+            if (value == null)
             {
-                return Enum.Parse(targetType, value?.ToString() ?? "0");
-            }
-            
-            // 处理 int 到 double 的转换
-            if (targetType == typeof(double) && value is int intValue)
-            {
-                return (double)intValue;
+                return targetType.IsValueType && Nullable.GetUnderlyingType(targetType) == null
+                    ? Activator.CreateInstance(targetType)
+                    : null;
             }
 
-            return Convert.ChangeType(value, targetType);
+            var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+            if (underlyingType.IsEnum)
+            {
+                return Enum.Parse(underlyingType, value.ToString() ?? "0");
+            }
+
+            if (underlyingType == typeof(double))
+            {
+                return Convert.ToDouble(value);
+            }
+
+            return Convert.ChangeType(value, underlyingType);
         }
     }
 }

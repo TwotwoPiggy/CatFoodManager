@@ -55,6 +55,7 @@ public class TestBestPrice : IEntity
     public string? FactoryName { get; set; }
     public bool HasTestReport { get; set; }
     public bool IsWorthRepurchasing { get; set; }
+    public string? TestingAgency { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
     public DateTimeOffset? PurchasedAt { get; set; }

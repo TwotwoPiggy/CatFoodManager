@@ -36,7 +36,7 @@ public class GeminiSettingsValidatorTests
         var result = _validator.Validate(null, settings);
 
         Assert.True(result.Failed);
-        Assert.Equal("ApiKey is required for Gemini.", result.FailureMessage);
+        Assert.Equal("ApiKey is required for Gemini settings.", result.FailureMessage);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class GeminiSettingsValidatorTests
         var result = _validator.Validate(null, settings);
 
         Assert.True(result.Failed);
-        Assert.Equal("ApiKey is required for Gemini.", result.FailureMessage);
+        Assert.Equal("ApiKey is required for Gemini settings.", result.FailureMessage);
     }
 
     [Fact]
@@ -64,6 +64,6 @@ public class GeminiSettingsValidatorTests
         var result = _validator.Validate(null, settings);
 
         Assert.True(result.Failed);
-        Assert.Equal("ApiKey is required for Gemini.", result.FailureMessage);
+        Assert.Equal("ApiKey is required for Gemini settings.", result.FailureMessage);
     }
 }

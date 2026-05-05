@@ -1,5 +1,5 @@
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
@@ -42,26 +42,15 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> GetBrands(string? searchKey = null)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<Brand>>();
+            var service = scope.ServiceProvider.GetRequiredService<IBrandService>();
 
-            IEnumerable<Brand> results;
-            int count;
-            
-            // 根据是否有搜索关键词选择查询方式
-            if (string.IsNullOrEmpty(searchKey))
-            {
-                (results, count) = service.GetAllWithCount();
-            }
-            else
-            {
-                (results, count) = service.FuzzyQueryWithCount(BuildSearchQuery(searchKey));
-            }
+            var results = await service.SearchAsync(searchKey ?? string.Empty);
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new
+            return JsonConvert.SerializeObject(new
             {
                 Data = results.ToList(),
-                Total = count
-            }, _jsonSettings));
+                Total = results.Count
+            }, _jsonSettings);
         }
 
         /// <summary>
@@ -72,12 +61,12 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> AddBrand(string name)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<Brand>>();
+            var service = scope.ServiceProvider.GetRequiredService<IBrandService>();
 
             var brand = new Brand { Name = name };
-            service.Save(brand);
+            await service.AddAsync(brand);
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true, Id = brand.Id }, _jsonSettings));
+            return JsonConvert.SerializeObject(new { Success = true, Id = brand.Id }, _jsonSettings);
         }
 
         /// <summary>
@@ -89,16 +78,16 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> UpdateBrand(long id, string name)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<Brand>>();
+            var service = scope.ServiceProvider.GetRequiredService<IBrandService>();
 
-            var brand = service.Query(id);
+            var brand = await service.GetByIdAsync(id);
             if (brand != null)
             {
                 brand.Name = name;
-                service.Update(brand);
+                await service.UpdateAsync(brand);
             }
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
 
         /// <summary>
@@ -109,20 +98,9 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> DeleteBrand(long id)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<Brand>>();
-            service.Delete((int)id);
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
-        }
-
-        /// <summary>
-        /// 构建搜索 SQL 查询语句
-        /// </summary>
-        /// <param name="searchKey">搜索关键词</param>
-        /// <returns>SQL 查询语句</returns>
-        private string BuildSearchQuery(string searchKey)
-        {
-            // 支持按 ID 或名称搜索
-            return $"SELECT * FROM Brand WHERE Id LIKE '%{(long.TryParse(searchKey, out long id) ? id : 0)}%' or Name like '%{searchKey}%'";
+            var service = scope.ServiceProvider.GetRequiredService<IBrandService>();
+            await service.DeleteAsync(id);
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
     }
 }

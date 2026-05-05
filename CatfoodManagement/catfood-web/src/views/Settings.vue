@@ -113,8 +113,32 @@
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane label="平台文件夹" name="platform">
+        <el-tab-pane label="文件夹" name="platform">
           <el-form :model="settingsForm" label-width="140px">
+            <el-form-item label="图片保存根路径">
+              <el-input 
+                :model-value="settingsForm.App.ImageSaveRootPath || ''" 
+                placeholder="选择图片保存根路径" 
+                readonly
+              >
+                <template #append>
+                  <el-button @click="handleSelectImageSaveRootPath">浏览</el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+            
+            <el-form-item v-if="settingsForm.App.ImageSaveRootPath" label="今日默认路径">
+              <div class="today-path-display">
+                <el-tag type="info">{{ todayDefaultPath }}</el-tag>
+                <el-button type="primary" link @click="handleOpenTodayFolder">
+                  <el-icon><FolderOpened /></el-icon>
+                  打开文件夹
+                </el-button>
+              </div>
+            </el-form-item>
+            
+            <el-divider />
+            
             <el-form-item label="平台文件夹配置">
               <div class="platform-folders">
                 <div v-for="platform in platforms" :key="platform.value" class="platform-folder-item">
@@ -194,7 +218,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Delete, Refresh, Plus, Edit } from '@element-plus/icons-vue'
+import { Check, Delete, Refresh, Plus, Edit, FolderOpened } from '@element-plus/icons-vue'
 import { 
   validateModel as validateModelApi, 
   syncFromPictures, 
@@ -210,6 +234,7 @@ import {
   updateOcrPrompt,
   deleteOcrPrompt,
   setOcrPromptDefault,
+  openFolder,
   type ModelInfo,
   type AppSettings,
   type OcrPrompt
@@ -263,7 +288,8 @@ const settingsForm = reactive<AppSettings>({
     ConnectionString: './data/catfood.db'
   },
   App: {
-    PlatformFolders: {}
+    PlatformFolders: {},
+    ImageSaveRootPath: ''
   }
 })
 
@@ -286,7 +312,8 @@ const loadSettings = async () => {
         ConnectionString: result.Data.Database?.ConnectionString || './data/catfood.db'
       }
       settingsForm.App = {
-        PlatformFolders: result.Data.App?.PlatformFolders || {}
+        PlatformFolders: result.Data.App?.PlatformFolders || {},
+        ImageSaveRootPath: result.Data.App?.ImageSaveRootPath || ''
       }
     }
   } catch (error) {
@@ -375,6 +402,38 @@ const handleSelectPlatformFolder = async (platformName: string) => {
 
 const handleClearPlatformFolder = (platformName: string) => {
   delete settingsForm.App.PlatformFolders[platformName]
+}
+
+const todayDefaultPath = computed(() => {
+  if (!settingsForm.App.ImageSaveRootPath) return ''
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  const dateStr = `${year}${month}${day}`
+  const basePath = settingsForm.App.ImageSaveRootPath.replace(/[\\/]+$/, '')
+  return `${basePath}\\${dateStr}\\`
+})
+
+const handleSelectImageSaveRootPath = async () => {
+  const path = await selectFolder()
+  if (path) {
+    settingsForm.App.ImageSaveRootPath = path
+  }
+}
+
+const handleOpenTodayFolder = async () => {
+  if (!todayDefaultPath.value) return
+  
+  try {
+    const result = await openFolder(todayDefaultPath.value)
+    if (!result.Success) {
+      ElMessage.error(result.Message || '打开文件夹失败')
+    }
+  } catch (error) {
+    ElMessage.error('打开文件夹失败')
+    console.error(error)
+  }
 }
 
 
@@ -544,5 +603,11 @@ onMounted(async () => {
   .el-input {
     flex: 1;
   }
+}
+
+.today-path-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 </style>

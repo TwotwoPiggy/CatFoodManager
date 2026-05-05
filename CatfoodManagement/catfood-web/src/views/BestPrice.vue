@@ -5,6 +5,14 @@
         <div class="card-header">
           <span>最佳价格管理</span>
           <div class="header-actions">
+            <el-button 
+              type="danger" 
+              :icon="Delete" 
+              :disabled="selectedRows.length === 0"
+              @click="handleBatchDelete"
+            >
+              批量删除 {{ selectedRows.length > 0 ? `(${selectedRows.length})` : '' }}
+            </el-button>
             <el-button type="primary" :icon="Refresh" @click="handleSync">AI同步数据</el-button>
             <el-button type="success" :icon="Plus" @click="handleAdd">新增记录</el-button>
           </div>
@@ -34,7 +42,9 @@
         stripe
         height="calc(100vh - 320px)"
         @cell-dblclick="handleCellDblClick"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="Id" label="ID" width="80" fixed />
         <el-table-column prop="Name" label="名称" min-width="150">
           <template #default="{ row }">
@@ -129,16 +139,16 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="PicturePath" label="照片" width="100">
+        <el-table-column prop="PicturePath" label="照片" width="120" header-align="center">
           <template #default="{ row }">
-            <el-button
-              v-if="row.PicturePath"
-              type="primary"
-              link
-              @click="handleViewImage(row.PicturePath)"
-            >
-              查看
-            </el-button>
+            <div v-if="row.PicturePath" class="photo-actions">
+              <el-button type="primary" link :loading="viewingImage" @click="handleViewImage(row.PicturePath)">
+                查看
+              </el-button>
+              <el-button type="warning" link @click="handleUploadImage(row)">
+                更新
+              </el-button>
+            </div>
             <el-button v-else type="primary" link @click="handleUploadImage(row)">上传</el-button>
           </template>
         </el-table-column>
@@ -164,6 +174,18 @@
             <el-tag v-else :type="row.HasTestReport ? 'success' : 'info'">
               {{ row.HasTestReport ? '有' : '无' }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="TestingAgency" label="检测机构" width="150">
+          <template #default="{ row }">
+            <el-input
+              v-if="row.editing === 'TestingAgency'"
+              v-model="row.editValue"
+              size="small"
+              @keyup.enter="handleSaveEdit(row, 'TestingAgency')"
+              @blur="handleSaveEdit(row, 'TestingAgency')"
+            />
+            <span v-else class="editable-cell">{{ row.TestingAgency || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="IsWorthRepurchasing" label="值得回购" width="100">
@@ -258,6 +280,9 @@
         <el-form-item label="有检测报告">
           <el-switch v-model="addForm.HasTestReport" />
         </el-form-item>
+        <el-form-item label="检测机构">
+          <el-input v-model="addForm.TestingAgency" placeholder="请输入检测机构名称" />
+        </el-form-item>
         <el-form-item label="值得回购">
           <el-switch v-model="addForm.IsWorthRepurchasing" />
         </el-form-item>
@@ -332,16 +357,23 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <ImageUploadDialog
+      v-model="uploadDialogVisible"
+      :record-id="currentUploadRow?.Id || 0"
+      @success="handleUploadSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onActivated, reactive, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Search, RefreshRight, Plus, Refresh } from '@element-plus/icons-vue'
-import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, viewImage, waitForCefSharp, createTask } from '@/utils/bridge'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, RefreshRight, Plus, Refresh, Delete } from '@element-plus/icons-vue'
+import { getBestPrices, addBestPrice, updateBestPrice, deleteBestPrice, deleteBestPrices, viewImage, waitForCefSharp, createTask, uploadBestPriceImage } from '@/utils/bridge'
 import { ProductType, PlatformType, TaskType } from '@/types'
 import { useAppConfigStore } from '@/stores/appConfig'
+import ImageUploadDialog from '@/components/ImageUploadDialog.vue'
 
 // 最佳价格记录的数据结构
 interface BestPriceRow {
@@ -355,6 +387,7 @@ interface BestPriceRow {
   PicturePath: string | null
   FactoryName: string | null
   HasTestReport: boolean
+  TestingAgency: string | null
   IsWorthRepurchasing: boolean
   PurchasedAt: string | null
   editing?: string
@@ -368,6 +401,7 @@ const currentPage = ref(1)
 const pageSize = ref(50)
 const total = ref(0)
 const tableData = ref<BestPriceRow[]>([])
+const selectedRows = ref<BestPriceRow[]>([])
 
 // 对话框相关状态
 const addDialogVisible = ref(false)
@@ -375,6 +409,9 @@ const imageDialogVisible = ref(false)
 const currentImageUrl = ref('')
 const syncDialogVisible = ref(false)
 const syncing = ref(false)
+const uploadDialogVisible = ref(false)
+const currentUploadRow = ref<BestPriceRow | null>(null)
+const viewingImage = ref(false)
 
 // 使用 appConfig store
 const appConfigStore = useAppConfigStore()
@@ -399,6 +436,7 @@ const addForm = reactive({
   HasPurchased: false,
   FactoryName: '',
   HasTestReport: false,
+  TestingAgency: '',
   IsWorthRepurchasing: false,
   PurchasedAt: null as string | null
 })
@@ -661,19 +699,91 @@ const handleDelete = async (row: BestPriceRow) => {
   }
 }
 
+// 选择变化处理
+const handleSelectionChange = (rows: BestPriceRow[]) => {
+  selectedRows.value = rows
+}
+
+// 批量删除
+const handleBatchDelete = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要删除的记录')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedRows.value.length} 条记录吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const ids = selectedRows.value.map(row => row.Id)
+    const result = await deleteBestPrices(ids)
+    
+    if (result.Success) {
+      ElMessage.success(`成功删除 ${result.Count || ids.length} 条记录`)
+      selectedRows.value = []
+      loadData()
+    } else {
+      ElMessage.error(result.Message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error(error)
+    }
+  }
+}
+
 // 查看图片
-const handleViewImage = (picturePath: string) => {
+const handleViewImage = async (picturePath: string) => {
   if (picturePath.startsWith('http')) {
     currentImageUrl.value = picturePath
     imageDialogVisible.value = true
   } else {
-    viewImage(picturePath)
+    viewingImage.value = true
+    try {
+      const result = await viewImage(picturePath)
+      if (!result.Success) {
+        ElMessage.error(result.Message || '打开图片失败')
+      }
+    } catch (error) {
+      ElMessage.error('打开图片失败')
+      console.error(error)
+    } finally {
+      viewingImage.value = false
+    }
   }
 }
 
-// 上传图片（待开发）
-const handleUploadImage = (row: BestPriceRow) => {
-  ElMessage.info('上传功能开发中...')
+// 上传图片
+const handleUploadImage = async (row: BestPriceRow) => {
+  currentUploadRow.value = row
+  await appConfigStore.fetchAll(true)
+  uploadDialogVisible.value = true
+}
+
+// 处理上传成功
+const handleUploadSuccess = async (data: { recordId: number; imagePath: string; targetPath: string }) => {
+  try {
+    const result = await uploadBestPriceImage(data.recordId, data.imagePath, data.targetPath)
+    
+    if (result.Success) {
+      ElMessage.success('上传成功')
+      uploadDialogVisible.value = false
+      loadData()
+    } else {
+      ElMessage.error(result.Message || '上传失败')
+    }
+  } catch (error) {
+    ElMessage.error('上传失败')
+    console.error(error)
+  }
 }
 
 // 组件挂载时初始化
@@ -725,5 +835,10 @@ onActivated(() => {
 
 .sync-content {
   padding: 10px 0;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 4px;
 }
 </style>

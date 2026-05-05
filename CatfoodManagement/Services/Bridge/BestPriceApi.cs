@@ -1,13 +1,13 @@
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
-using CatFoodManager.Core.Statics;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Entities;
+using CatFoodManager.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
 namespace CatfoodManagement.Services.Bridge
 {
     /// <summary>
-    /// 最佳价格管理 API，提供价格记录的增删改查操作
+    /// 最佳价格管理API，提供价格记录的增删改查操作
     /// 通过 CefSharp 暴露给前端 JavaScript 调用
     /// </summary>
     public class BestPriceApi
@@ -45,31 +45,17 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> GetBestPrices(int page, int pageSize, string? searchKey = null)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<BestPrice>>();
+            var service = scope.ServiceProvider.GetRequiredService<IBestPriceService>();
 
-            IEnumerable<BestPrice> results;
-            int count;
-            
-            // 根据是否有搜索关键词选择查询方式
-            if (string.IsNullOrEmpty(searchKey))
-            {
-                (results, count) = service.GetAllWithCount();
-            }
-            else
-            {
-                (results, count) = service.FuzzyQueryWithCount(BuildSearchQuery(searchKey), BuildSearchArgs(searchKey));
-            }
+            var pagedResult = await service.GetPagedAsync(page, pageSize, searchKey);
 
-            // 分页处理
-            var pagedResults = results.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-
-            return await Task.FromResult(JsonConvert.SerializeObject(new
+            return JsonConvert.SerializeObject(new
             {
-                Data = pagedResults,
-                Total = count,
+                Data = pagedResult.Items,
+                Total = pagedResult.TotalCount,
                 Page = page,
                 PageSize = pageSize
-            }, _jsonSettings));
+            }, _jsonSettings);
         }
 
         /// <summary>
@@ -80,7 +66,7 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> AddBestPrice(dynamic dto)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<BestPrice>>();
+            var service = scope.ServiceProvider.GetRequiredService<IBestPriceService>();
 
             var bestPrice = new BestPrice
             {
@@ -91,12 +77,13 @@ namespace CatfoodManagement.Services.Bridge
                 FinalPrice = dto.FinalPrice,
                 PurchasedAt = dto.PurchasedAt,
                 PicturePath = dto.PicturePath,
-                HasPurchased = dto.HasPurchased
+                HasPurchased = dto.HasPurchased,
+                TestingAgency = dto.TestingAgency
             };
 
-            service.Save(bestPrice);
+            await service.AddAsync(bestPrice);
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true, Id = bestPrice.Id }, _jsonSettings));
+            return JsonConvert.SerializeObject(new { Success = true, Id = bestPrice.Id }, _jsonSettings);
         }
 
         /// <summary>
@@ -109,25 +96,24 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> UpdateBestPrice(long id, string field, object value)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<BestPrice>>();
+            var service = scope.ServiceProvider.GetRequiredService<IBestPriceService>();
 
-            var entity = service.Query(id);
+            var entity = await service.GetByIdAsync(id);
             if (entity == null)
             {
                 return JsonConvert.SerializeObject(new { Success = false, Message = "Entity not found" }, _jsonSettings);
             }
 
-            // 通过反射更新指定字段
             var propertyToUpdate = entity.GetType().GetProperty(field);
             if (propertyToUpdate != null)
             {
                 var convertedValue = ConvertValue(value, propertyToUpdate.PropertyType);
                 propertyToUpdate.SetValue(entity, convertedValue);
                 entity.UpdatedAt = DateTime.Now;
-                service.Update(entity);
+                await service.UpdateAsync(entity);
             }
 
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
 
         /// <summary>
@@ -138,29 +124,93 @@ namespace CatfoodManagement.Services.Bridge
         public async Task<string> DeleteBestPrice(long id)
         {
             using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IService<BestPrice>>();
-            service.Delete((int)id);
-            return await Task.FromResult(JsonConvert.SerializeObject(new { Success = true }, _jsonSettings));
+            var service = scope.ServiceProvider.GetRequiredService<IBestPriceService>();
+            await service.DeleteAsync(id);
+            return JsonConvert.SerializeObject(new { Success = true }, _jsonSettings);
         }
 
         /// <summary>
-        /// 构建搜索 SQL 查询语句
+        /// 批量删除价格记录
         /// </summary>
-        /// <param name="searchKey">搜索关键词</param>
-        /// <returns>SQL 查询语句</returns>
-        private string BuildSearchQuery(string searchKey)
+        /// <param name="ids">价格记录ID数组</param>
+        /// <returns>JSON格式的操作结果，包含删除数量</returns>
+        public async Task<string> DeleteBestPrices(long[] ids)
         {
-            return "SELECT DISTINCT a.*\r\nFROM BestPrice a\r\nWHERE a.Name like ?";
+            using var scope = _serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<IBestPriceService>();
+            var count = await service.DeleteRangeAsync(ids);
+            return JsonConvert.SerializeObject(new { Success = true, Count = count }, _jsonSettings);
         }
 
         /// <summary>
-        /// 构建搜索参数
+        /// 上传图片到指定路径并更新记录
         /// </summary>
-        /// <param name="searchKey">搜索关键词</param>
-        /// <returns>参数数组</returns>
-        private object[] BuildSearchArgs(string searchKey)
+        /// <param name="id">价格记录 ID</param>
+        /// <param name="imagePath">源图片路径</param>
+        /// <param name="targetPath">目标保存路径</param>
+        /// <returns>JSON 格式的操作结果，包含新的图片路径</returns>
+        public async Task<string> UploadImageAsync(long id, string imagePath, string targetPath)
         {
-            return new object[] { $"%{searchKey}%" };
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IBestPriceService>();
+
+                var entity = await service.GetByIdAsync(id);
+                if (entity == null)
+                {
+                    return JsonConvert.SerializeObject(new { Success = false, Message = "记录不存在" }, _jsonSettings);
+                }
+
+                if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                {
+                    return JsonConvert.SerializeObject(new { Success = false, Message = "图片文件不存在" }, _jsonSettings);
+                }
+
+                if (string.IsNullOrEmpty(targetPath))
+                {
+                    return JsonConvert.SerializeObject(new { Success = false, Message = "目标路径不能为空" }, _jsonSettings);
+                }
+
+                if (!Directory.Exists(targetPath))
+                {
+                    Directory.CreateDirectory(targetPath);
+                }
+
+                var fileName = Path.GetFileNameWithoutExtension(imagePath);
+                var extension = Path.GetExtension(imagePath);
+                var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                var newFileName = $"{fileName}_{timestamp}{extension}";
+                var targetFilePath = Path.Combine(targetPath, newFileName);
+
+                if (!string.IsNullOrEmpty(entity.PicturePath) && File.Exists(entity.PicturePath))
+                {
+                    try
+                    {
+                        File.Delete(entity.PicturePath);
+                    }
+                    catch
+                    {
+                        // 忽略删除失败，不影响主流程
+                    }
+                }
+
+                File.Move(imagePath, targetFilePath, overwrite: true);
+
+                entity.PicturePath = targetFilePath;
+                entity.UpdatedAt = DateTime.Now;
+                await service.UpdateAsync(entity);
+
+                return JsonConvert.SerializeObject(new 
+                { 
+                    Success = true, 
+                    Data = new { PicturePath = targetFilePath } 
+                }, _jsonSettings);
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new { Success = false, Message = ex.Message }, _jsonSettings);
+            }
         }
 
         /// <summary>
@@ -171,19 +221,26 @@ namespace CatfoodManagement.Services.Bridge
         /// <returns>转换后的值</returns>
         private static object ConvertValue(object value, Type targetType)
         {
-            // 处理枚举类型
-            if (targetType.IsEnum)
+            if (value == null)
             {
-                return Enum.Parse(targetType, value?.ToString() ?? "0");
-            }
-            
-            // 处理 int 到 decimal 的转换
-            if (targetType == typeof(decimal) && value is int intValue)
-            {
-                return (decimal)intValue;
+                return targetType.IsValueType && Nullable.GetUnderlyingType(targetType) == null
+                    ? Activator.CreateInstance(targetType)
+                    : null;
             }
 
-            return Convert.ChangeType(value, targetType);
+            var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+            if (underlyingType.IsEnum)
+            {
+                return Enum.Parse(underlyingType, value.ToString() ?? "0");
+            }
+
+            if (underlyingType == typeof(decimal))
+            {
+                return Convert.ToDecimal(value);
+            }
+
+            return Convert.ChangeType(value, underlyingType);
         }
     }
 }

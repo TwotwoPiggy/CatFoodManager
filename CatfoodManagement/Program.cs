@@ -1,9 +1,8 @@
 using CatFoodManager.Application.Extensions;
 using CatFoodManager.Application.Interfaces;
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
-using CatFoodManager.Core.Repositories;
-using CatFoodManager.Core.Services;
+using CatFoodManager.Application.Services;
+using CatFoodManager.Domain.Entities;
+using CatFoodManager.Domain.Interfaces;
 using CatFoodManager.Infrastructure.Extensions;
 using CatFoodManager.Infrastructure.Services;
 using CatfoodManagement.Services;
@@ -16,7 +15,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Twotwo.Agent.Extensions;
 using Twotwo.Agent.Interfaces;
-using IApplicationGeminiOcrService = CatFoodManager.Application.Interfaces.IGeminiOcrService;
 using OcrApiService = CatfoodManagement.Services.Bridge.OcrApi;
 
 namespace CatfoodManagement
@@ -42,6 +40,8 @@ namespace CatfoodManagement
                 CefSharpSettings.ConcurrentTaskExecution = true;
                 ApplicationConfiguration.Initialize();
                 ConfigureServices();
+
+                InitializeDatabase().GetAwaiter().GetResult();
 
                 StartBackgroundService();
 
@@ -88,11 +88,21 @@ namespace CatfoodManagement
                 builder.SetMinimumLevel(LogLevel.Information);
             });
 
-            var databasePath = Configuration.GetConnectionString("Default") ?? "./data/catfood.db";
+            var connectionString = Configuration.GetConnectionString("Default") ?? "data/catfood.db";
+            var databasePath = Path.IsPathRooted(connectionString)
+                ? connectionString
+                : Path.Combine(AppContext.BaseDirectory, connectionString);
+
+            var databaseDir = Path.GetDirectoryName(databasePath);
+            if (!string.IsNullOrEmpty(databaseDir) && !Directory.Exists(databaseDir))
+            {
+                Directory.CreateDirectory(databaseDir);
+            }
 
             services.AddInfrastructureSettings(Configuration);
             services.AddInfrastructure(databasePath);
             services.AddApplicationServices();
+            services.AddGeminiOcrService();
 
             services.AddGeminiAgent(Configuration, "AppSettings:AI");
 
@@ -101,23 +111,8 @@ namespace CatfoodManagement
             services.AddSingleton<INotificationService, NotificationService>();
             
             services.AddSingleton<SQLiteHelper>();
-            services.AddScoped<IRepository, CommonRepository>();
             services.AddScoped<PictureContentService>();
             
-            services.AddScoped<IService<Brand>, BrandService>(serviceProvider => new BrandService(serviceProvider.GetRequiredService<IRepository>(), true));
-            services.AddScoped<IService<CatFood>, CatFoodService>(serviceProvider => new CatFoodService(serviceProvider.GetRequiredService<IRepository>(), true));
-            services.AddScoped<IService<Factory>, FactoryService>(serviceProvider => new FactoryService(serviceProvider.GetRequiredService<IRepository>(), true));
-            services.AddScoped<IService<BestPrice>, LowestPriceService>(serviceProvider => new LowestPriceService(serviceProvider.GetRequiredService<IRepository>(), true));
-            
-            services.AddSingleton<IMemoryCache, MemoryCache>();
-            services.AddScoped<IApplicationGeminiOcrService, CatFoodManager.Application.Services.GeminiOcrService>(sp =>
-            {
-                var agentService = sp.GetRequiredService<IGeminiAgentService>();
-                var repository = sp.GetRequiredService<IRepository>();
-                var logger = sp.GetRequiredService<ILogger<CatFoodManager.Application.Services.GeminiOcrService>>();
-                var cache = sp.GetRequiredService<IMemoryCache>();
-                return new CatFoodManager.Application.Services.GeminiOcrService(agentService, repository, logger, cache);
-            });
             services.AddScoped<OcrApiService>();
 
             ServiceProvider = services.BuildServiceProvider();
@@ -129,6 +124,16 @@ namespace CatfoodManagement
             _backgroundServiceCts = new CancellationTokenSource();
             
             _ = _backgroundServiceControl.StartServiceAsync(_backgroundServiceCts.Token);
+        }
+
+        private static async Task InitializeDatabase()
+        {
+            using var scope = ServiceProvider.CreateScope();
+            var databaseInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+            var ocrPromptService = scope.ServiceProvider.GetRequiredService<IOcrPromptService>();
+            
+            await databaseInitializer.InitializeAsync();
+            await ocrPromptService.InitializeDefaultPromptAsync();
         }
 
         private static async void OnApplicationExit(object? sender, EventArgs e)

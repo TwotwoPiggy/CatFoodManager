@@ -115,6 +115,8 @@ public class OcrPromptServiceTests
         var existingPrompt = new OcrPrompt { Id = 1, Name = "Old Name", Content = "Old Content", IsDefault = false };
         _repositoryMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingPrompt);
+        _repositoryMock.Setup(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<OcrPrompt, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OcrPrompt>());
 
         await _service.UpdateAsync(1, "New Name", "New Content", true, "New Description");
 

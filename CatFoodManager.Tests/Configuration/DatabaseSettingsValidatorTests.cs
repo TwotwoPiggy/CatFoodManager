@@ -26,6 +26,19 @@ public class DatabaseSettingsValidatorTests
     }
 
     [Fact]
+    public void Validate_ShouldReturnSuccess_WhenDatabasePathIsValid()
+    {
+        var settings = new DatabaseSettings
+        {
+            DatabasePath = "./data/test.db"
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
     public void Validate_ShouldReturnFail_WhenConnectionStringIsEmpty()
     {
         var settings = new DatabaseSettings
@@ -36,7 +49,7 @@ public class DatabaseSettingsValidatorTests
         var result = _validator.Validate(null, settings);
 
         Assert.True(result.Failed);
-        Assert.Equal("ConnectionString is required.", result.FailureMessage);
+        Assert.Equal("Either ConnectionString or DatabasePath must be specified.", result.FailureMessage);
     }
 
     [Fact]
@@ -50,7 +63,7 @@ public class DatabaseSettingsValidatorTests
         var result = _validator.Validate(null, settings);
 
         Assert.True(result.Failed);
-        Assert.Equal("ConnectionString is required.", result.FailureMessage);
+        Assert.Equal("Either ConnectionString or DatabasePath must be specified.", result.FailureMessage);
     }
 
     [Fact]
@@ -64,6 +77,6 @@ public class DatabaseSettingsValidatorTests
         var result = _validator.Validate(null, settings);
 
         Assert.True(result.Failed);
-        Assert.Equal("ConnectionString is required.", result.FailureMessage);
+        Assert.Equal("Either ConnectionString or DatabasePath must be specified.", result.FailureMessage);
     }
 }

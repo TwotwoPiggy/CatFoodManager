@@ -66,6 +66,33 @@ public class BrandService : IBrandService
     }
 
     /// <summary>
+    /// 搜索品牌。
+    /// Searches brands by keyword.
+    /// </summary>
+    /// <param name="searchKey">搜索关键词 / Search keyword</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>品牌列表 / List of brands</returns>
+    public async Task<IReadOnlyList<Brand>> SearchAsync(string searchKey, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Searching brands with key: {SearchKey}", searchKey);
+        
+        if (string.IsNullOrWhiteSpace(searchKey))
+        {
+            return await GetAllAsync(cancellationToken);
+        }
+
+        if (long.TryParse(searchKey, out var id))
+        {
+            var brand = await GetByIdAsync(id, cancellationToken);
+            return brand != null ? new List<Brand> { brand }.AsReadOnly() : Array.Empty<Brand>();
+        }
+
+        return await _repository.FindAsync(
+            b => b.Name != null && b.Name.Contains(searchKey, StringComparison.OrdinalIgnoreCase),
+            cancellationToken);
+    }
+
+    /// <summary>
     /// 添加品牌。
     /// Adds a brand.
     /// </summary>

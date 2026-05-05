@@ -1,6 +1,7 @@
 using CatfoodManagement.Services.Bridge;
-using CatFoodManager.Core.Interfaces;
-using CatFoodManager.Core.Models;
+using CatFoodManager.Application.Common;
+using CatFoodManager.Application.Interfaces;
+using CatFoodManager.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
@@ -10,13 +11,13 @@ namespace CatfoodManagement.Tests
     public class CatFoodApiTests
     {
         private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly Mock<IService<CatFood>> _mockCatFoodService;
+        private readonly Mock<ICatFoodService> _mockCatFoodService;
         private readonly CatFoodApi _catFoodApi;
 
         public CatFoodApiTests()
         {
             _mockServiceProvider = new Mock<IServiceProvider>();
-            _mockCatFoodService = new Mock<IService<CatFood>>();
+            _mockCatFoodService = new Mock<ICatFoodService>();
             
             var mockScope = new Mock<IServiceScope>();
             var mockScopeFactory = new Mock<IServiceScopeFactory>();
@@ -24,7 +25,7 @@ namespace CatfoodManagement.Tests
             mockScope.Setup(x => x.ServiceProvider).Returns(_mockServiceProvider.Object);
             mockScopeFactory.Setup(x => x.CreateScope()).Returns(mockScope.Object);
             _mockServiceProvider.Setup(x => x.GetService(typeof(IServiceScopeFactory))).Returns(mockScopeFactory.Object);
-            _mockServiceProvider.Setup(x => x.GetService(typeof(IService<CatFood>))).Returns(_mockCatFoodService.Object);
+            _mockServiceProvider.Setup(x => x.GetService(typeof(ICatFoodService))).Returns(_mockCatFoodService.Object);
 
             _catFoodApi = new CatFoodApi(_mockServiceProvider.Object);
         }
@@ -32,15 +33,19 @@ namespace CatfoodManagement.Tests
         [Fact]
         public async Task GetCatFoods_ShouldReturnPagedResult()
         {
-            var catFoods = new List<CatFood>
+            var pagedResult = new PagedResult<CatFood>
             {
-                new CatFood { Id = 1, Name = "Test Cat Food 1" },
-                new CatFood { Id = 2, Name = "Test Cat Food 2" }
+                Items = new List<CatFood>
+                {
+                    new CatFood { Id = 1, Name = "Test Cat Food 1" },
+                    new CatFood { Id = 2, Name = "Test Cat Food 2" }
+                },
+                TotalCount = 2
             };
 
             _mockCatFoodService
-                .Setup(x => x.GetAllWithCount())
-                .Returns((catFoods, 2));
+                .Setup(x => x.GetPagedAsync(1, 10, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(pagedResult);
 
             var result = await _catFoodApi.GetCatFoods(1, 10);
             var deserializedResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);
@@ -55,8 +60,8 @@ namespace CatfoodManagement.Tests
             var catFood = new CatFood { Id = 1, Name = "Test Cat Food" };
             
             _mockCatFoodService
-                .Setup(x => x.Query(1))
-                .Returns(catFood);
+                .Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(catFood);
 
             var result = await _catFoodApi.UpdateCatFood(1, "Name", "Updated Name");
             var deserializedResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);
@@ -69,8 +74,8 @@ namespace CatfoodManagement.Tests
         public async Task UpdateCatFood_WithInvalidId_ShouldReturnFailure()
         {
             _mockCatFoodService
-                .Setup(x => x.Query(999))
-                .Returns((CatFood?)null);
+                .Setup(x => x.GetByIdAsync(999, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((CatFood?)null);
 
             var result = await _catFoodApi.UpdateCatFood(999, "Name", "Updated Name");
             var deserializedResult = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(result);

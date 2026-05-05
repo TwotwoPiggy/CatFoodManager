@@ -17,4 +17,8 @@
     <PackageReference Include="Twotwo.OCR" Version="1.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CatFoodManager.Domain\CatFoodManager.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

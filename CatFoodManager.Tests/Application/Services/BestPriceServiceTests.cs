@@ -101,6 +101,65 @@ public class BestPriceServiceTests
     }
 
     [Fact]
+    public async Task GetPagedAsync_WithSearchKey_ShouldReturnFilteredResults()
+    {
+        var allEntities = new List<BestPrice>
+        {
+            new() { Id = 1, Name = "Cat Food Brand A" },
+            new() { Id = 2, Name = "Dog Food Brand B" },
+            new() { Id = 3, Name = "Cat Food Brand C" }
+        };
+        var filteredEntities = allEntities.Where(e => e.Name.Contains("Cat")).ToList();
+        
+        _repositoryMock.Setup(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filteredEntities);
+
+        var result = await _service.GetPagedAsync(1, 10, "Cat");
+
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(2, result.TotalCount);
+        Assert.All(result.Items, item => Assert.Contains("Cat", item.Name));
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithSearchKey_ShouldReturnPagedFilteredResults()
+    {
+        var filteredEntities = new List<BestPrice>
+        {
+            new() { Id = 1, Name = "Cat Food Brand A" },
+            new() { Id = 2, Name = "Cat Food Brand B" },
+            new() { Id = 3, Name = "Cat Food Brand C" }
+        };
+        
+        _repositoryMock.Setup(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filteredEntities);
+
+        var result = await _service.GetPagedAsync(1, 2, "Cat");
+
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(3, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithEmptySearchKey_ShouldReturnAllResults()
+    {
+        var entities = new List<BestPrice>
+        {
+            new() { Id = 1, Name = "Price1" },
+            new() { Id = 2, Name = "Price2" }
+        };
+        _repositoryMock.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entities);
+
+        var result = await _service.GetPagedAsync(1, 10, "");
+
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(2, result.TotalCount);
+        _repositoryMock.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _repositoryMock.Verify(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task SearchAsync_ShouldReturnMatchingEntities()
     {
         var entities = new List<BestPrice>
@@ -165,5 +224,31 @@ public class BestPriceServiceTests
         await _service.DeleteAsync(1);
 
         _repositoryMock.Verify(r => r.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteRangeAsync_ShouldDeleteMultipleRecords()
+    {
+        var ids = new List<long> { 1, 2, 3 };
+        _repositoryMock.Setup(r => r.DeleteRangeAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
+
+        var result = await _service.DeleteRangeAsync(ids);
+
+        Assert.Equal(3, result);
+        _repositoryMock.Verify(r => r.DeleteRangeAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteRangeAsync_WithEmptyIds_ShouldReturnZero()
+    {
+        var ids = new List<long>();
+        _repositoryMock.Setup(r => r.DeleteRangeAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        var result = await _service.DeleteRangeAsync(ids);
+
+        Assert.Equal(0, result);
+        _repositoryMock.Verify(r => r.DeleteRangeAsync(It.IsAny<System.Linq.Expressions.Expression<Func<BestPrice, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
