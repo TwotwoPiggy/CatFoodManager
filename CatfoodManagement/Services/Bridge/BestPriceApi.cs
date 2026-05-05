@@ -240,6 +240,16 @@ namespace CatfoodManagement.Services.Bridge
                 return Convert.ToDecimal(value);
             }
 
+            if (underlyingType == typeof(DateTime))
+            {
+                return DateTime.Parse(value.ToString()!);
+            }
+
+            if (underlyingType == typeof(DateTimeOffset))
+            {
+                return DateTimeOffset.Parse(value.ToString()!);
+            }
+
             return Convert.ChangeType(value, underlyingType);
         }
     }
